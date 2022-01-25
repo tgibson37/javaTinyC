@@ -1,0 +1,129 @@
+New goal: Use java to rebuild tiny-obj into tiny-j
+22 Jan 2022
+---
+14 toc dot-c files
+	src/debug.c   src/facsym.c    src/link.c         src/stack.c    src/var.c
+	src/dialog.c  src/factor.c    src/machineCall.c  src/toc.c      src/xray.c
+	src/expr.c    src/fileRead.c  src/platform.c     src/tocMain.c
+tests in test* dirs and files
+	green == bash scripts
+	blue  == dirs
+tiny-c/test.c may be better study for order of coding
+test number:
+	1..4: newvar, dumpVarTab
+	5: symname, dumpName
+	6: _varAlloc, dumpVarTab
+	7: _lit
+	8: _decl
+	9: iProperty  [ReadFile, reads property file]
+[to be continued, 77 tests]
+==============	
+Studying var.c. Goal is understanding needed publics.
+	6:   void newfun()
+	25:  void fundone()
+	78:  void newvar(class,type,len,passed)   <<== constructor
+	158: var* addrval()
+privates:
+	_copyArgValue, _allocSpace, _canon, canon, _addrval, _addrval_all
+5 dumps:
+	165..211  [Val, funEntry, Fun, Var, VarTab]
+==============	
+Probably not needed: FileRead, debug
+==============
+Studying stack.c
+	38:   void pushst(,,,)
+	52:   stackentry* popst()
+	64:   int topdiff()   [used only by reln, tc~474]
+	72:   int toptoi()
+	106:  void pushk(datum)
+	114:  void pushPtr(datum)
+	121:  void pushone()
+	124:  void pushzero()
+privates:
+	stuffCopy (one use)
+4 dumps:
+	3..33 [stackEntry, stack, popTop, top, ]
+NOTICE stack always pops int
+----------------------------------
+
+Sun, Jan 23
+ISSUE: how to implement stuff. It must carry a typeless. C uses a union. There
+is no such thing in java. And I bet you cannot do a pointer. It would have
+to be a subscript into an array. How to implement...
+	char foo(99), ptr(0); ptr=foo      ???
+This issue may be fatal to the goal.
+Maybe tj can have references instead of pointers. ptr(0) syntax is class 1
+in tc and toc. Actually tc pointers ARE references. They have type, size, len.
+How to implement stuff ??? What goes onto a stack? You pop a stack and then
+examine what you got, type,size,len,class,value. value is the bugger.
+	Maybe stuff has all except value, and value is a subclass. HMM!
+Datum would be type stuff, and usage of a datum would dig out its value by 
+downcasting. Better implement this first as it may be the critical issue to
+solve. Do var and stack first. [History repeats itself.]
+---
+Issue: files. tc.c was separated into a few files in tiny-obj. What are they?
+$ ls src/*.c
+	src/debug.c   src/facsym.c    src/link.c         src/stack.c    src/var.c
+	src/dialog.c  src/factor.c    src/machineCall.c  src/toc.c      src/xray.c
+	src/expr.c    src/fileRead.c  src/platform.c     src/tocMain.c
+This seems a better structure, especially for public classes. One possibility is
+to use tiny-obj as our code source for java, maybe leaving out the object 
+extensions. Probably easier is to split tc.c into above. tiny-c has 9 dot-c 
+files, (omiting 2 test codes.) Above is 14, but it includes enhancements like xray.
+Difference:  facsym, link, factor, xray, expr, platform...
+		toc					tc			sizes(K)
+	src/debug.c			.debug
+	src/facsym.c    	.				 2
+	src/link.c         	.				 9
+	src/stack.c    		.stack
+	src/var.c			.var
+	src/dialog.c  		.dialog
+	src/factor.c    	.				 9
+	src/machineCall.c  	.machineCall
+	src/toc.c      		.tc				10, 23
+	src/xray.c			.
+	src/expr.c    		.				 5
+	src/fileRead.c  	.FileRead
+	src/platform.c     	.
+	src/tocMain.c		.tcMain
+xray has no comments. What is it?
+	Its a debugging aid, an extension to MC 0. DO LATER, maybe.
+---
+toc split   -->  facsym, link, factor, expr
+=======
+Plan tc:
+	Use tc code, cp from tiny-c read-only
+	split tc to match the toc split into *.java files
+	define stuff & descendants, ival, cval, and maybe sval for strings.
+	Optionally put value there, too.
+=============
+var vs stackentry...
+	struct stackentry { 
+		int class; int lvalue; Type type; 
+		union stuff value; 
+	};
+	struct var { 
+		char name[VLEN+1]; int class; Type type; int len; int brkpt;
+		union stuff value; 
+	};
+var reflects what is in the declaration. StackEntry what is
+needed for an expression. Notice var has value, which may be
+a C pointer to a string. var.value points into value space. 
+For class 1 char it	points into the tc program text.
+	Can these two decls be made cleaner. In java cannot coerce ints <-> ptrs. 
+Use subclasses for value intead of union. For now focus on stack version, and
+value is in each subclass Including ref to text. 
+---------------------
+
+Tue Jan 25
+Working on Stuff.java.
+
+
+
+
+
+
+
+
+
+
