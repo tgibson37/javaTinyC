@@ -116,8 +116,10 @@ value is in each subclass Including ref to text.
 ---------------------
 
 Tue Jan 25
-Working on Stuff.java.
-
+Working on Stuff.java. char and int OK, string probably needs change when its
+role is better understood. Did git init, and committed.
+	Cval/Ival classes have toInt(), Sval has toString().
+	java Stuff  ->  "7 81 foo-bar"  [3 lines]
 
 
 

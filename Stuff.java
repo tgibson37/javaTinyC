@@ -6,6 +6,7 @@
 class Sval extends Stuff {
 	String val;    // index into program space. Use pr(val) instead of *val
 	Sval(String v){ super(CHAR,v.length(),FALSE); val=v; }
+	String getStr(){return val;}
 }
 class Cval extends Stuff {
 	char val;
@@ -35,7 +36,7 @@ public class Stuff {
 	Stuff(int t, int l, int lv ){
 		type = t; len = l; lvalue = lv;
 	}
-	int toInt(){
+	int getInt(){
 		int v=99;
 		switch(type) {
 		case CHAR: v = ((Cval)this).val; break;
@@ -53,9 +54,9 @@ public class Stuff {
 		Ival vi = new Ival(7);
 		Cval vc = new Cval('Q');
 		Sval vs = new Sval("foo-bar");
-		System.out.println(String.valueOf(vi.toInt()));
-		System.out.println(String.valueOf(vc.toInt()));
-		System.out.println((((Sval)vs).val));
+		System.out.println(String.valueOf(vi.getInt()));
+		System.out.println(String.valueOf(vc.getInt()));
+		System.out.println(vs.getStr());
 	}
 }
 
