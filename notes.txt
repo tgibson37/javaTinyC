@@ -120,6 +120,211 @@ Working on Stuff.java. char and int OK, string probably needs change when its
 role is better understood. Did git init, and committed.
 	Cval/Ival classes have toInt(), Sval has toString().
 	java Stuff  ->  "7 81 foo-bar"  [3 lines]
+java String is immutable. StringBuffer is not. Which should I use for quoted
+strings? The tc code in String means cannot change trailing quote to null, but
+must extract the string. The former was always a kluge. Hmm.
+---
+Next goal: stack
+---------------------
+
+Wed Jan 26
+setting CLASSPATH...
+	As root:  $ . ./setClassPath   << my bash script
+			$ echo $CLASSPATH
+			~/Projects/tiny-j/classes
+---
+From: https://stackoverflow.com/questions/45309470/how-to-set-environment-variable-classpath-and-noclassdeffounderror-on-linux
+    javac ABMain.java
+    mv AAA.class ./sub/AAA.class
+    mv BBB.class ./sub/BBB.class
+    java -cp ./sub:. ABMain
+The idea seems to be: 
+	subordinate stuff move to ./sub, (I would use ./classes)
+	main class stays in tiny-j, and is launched from there
+	the -cp means class path with subordinate. NOTE the :.
+	I would use:    java -cp ./classes:. Stuff
+		and eventually Stack and ultimately tj
+	CLASSPATH env var seems to not be involved at all.
+---
+STATUS of classpath nightmare...
+	export CLASSPATH=/home/.../tiny-j/classes     WORKS at user level
+	echo $CLASSPATH                               confirms
+	erase all *.class files
+	javac *.java                         CLASSPATH ignored
+	mv *.class classes                   all including Stuff.class
+	java Stuff                           runs fine
+javac ignores the CLASSPATH, java uses it OK.
+How to avoid the mv step? How to make javac embrace the CLASSPATH?
+	Found a -cp javac option, man javac, scroll down 2 hits.
+	It doesn't work...
+NOW HAVE script: ./jc, which does the compile and move.
+---
+Goal: toptoi and other convenience push/pops.
+	A design issue is where to draw the line between Stuff and C primitives.
+	For example stack.c uses primitives and builds approprate wrapper as a
+	struct stackentry. The line is drawn INSIDE of stack push/pops. The C data
+	is needed in expression. Maybe expr() does the unwrapping. But pushone(),
+	etc is handy for reln(). Hmm.
+		Maybe keep Stuff wrappers a bit higher simplifying push/pop. 
+		Add pushk(int), pushone(), etc when needed in expression.
+	AND DITTO the funtab stuff. 
+	AND eq() needs to resolve an lvalue. Might want to do that soon.
+---
+Ultra simplified stack.java has just the stack itself, push, pop.
+How about expression next. A bit of parsing needed.
+---
+EXPRESSION...
+In tiny-obj expr.c has these fcns...
+	asgn
+	eq
+	reln
+	expr
+	term
+	and uses factor.c 
+These are in tc.c~459..675, total 269 lines.
+Starting with that code for expr.java.
+Doing konst first.  ISSUES:
+	_findEOS must return pr subscript
+	_mustFind ditto
+	DECIDE where are fname,lname converted to a Stuff?
+		konst, or new fcn immediately after ?
+		Simplest is konst, then return a Stuff which is ample.
+Plan: git it to work returning code, than add conversion to Stuff.
+STATUS: Wed 7pm: Working on PT.java. 
+---------------------
+
+Thur, Jan 27
+How to grep with brackets. Use primes AND backslash...
+	grep 'pr\[' *.java
+	grep '\*cursor' *.java
+---
+ISSUE: where to put char pr[TJ.PRSIZE] ?
+	TJ has manefest constants and some globals, e.g. cursor.
+	Stack has the stack.
+	cursor,first,last and pr and all parsing should be together.
+	PT is parsing tools.
+	I'm thinking one big file for pr and all code needing access to it.
+	PR.java ???
+	Where does main go? java TJ? java TC? 
+	When packed into a jar, how is the jar executed ?
+		java -jar /../pathToApp
+---
+import <packageName>
+	package statement must be first in file except for leading comments
+	or blank lines. My package name would be tgibson37.tinyc.
+The package statement in Stuff hides its main, and it wont run.
+How to execute a package produced by one file? 
+---------------------
+
+Fri, Jan 28
+New ~/Projects/Java/Play folder. Goal is to experiment with package directive.
+========================= (hiatus) ============================
+
+Sun, Feb 6
+Moved tiny-j under ~/Projects/Java.
+
+See ~/Projects/Java/Play/PackageFun for above goal. 
+Instead of a makefile I used a few very short bash scripts: 
+	setClassPath, jc (compile all), run, clean (remove class files). 
+And package name is /tg37/pkgTry. I know understand packaging much better.
+
+STATUS:
+	must compile in specific order, so using jc to capture that order.
+	So far 2 compiles, the rest fail. NEEDS study why.
+		BECAUSE latest changes were not finished/debugged.
+pr not declared anywhere. Most usages are in PT.java (parse tools). 
+	Where to put? TJ so far is constants. It has NO prereq classes.
+		DONE. And stack[] defined in stack.java, too.
+---------------------
+
+Mon, Feb 7
+GOAL today: retrofit those scripts to tiny-j and package all.
+Bit of confusion. The work is in dir Java/tiny-j. The package is tg37/tinyc.
+And: going straight to new dir structure.
+---
+x	move/modify scripts
+x		setClassPath
+x		clean
+x		jc
+x		run
+x	create dir structure
+	edit src to belong to /tg37/tiny, and store under src dir
+	test this mess
+STATUS:
+	6:20am TJ compiles using new dir structure, jc works, clean works
+	6:35am Stuff compiles, runs OK 	
+	That brings me to the run status of old file structure, ~155 above. 
+---
+Goal:
+	Write Stack test main.
+		Stub runs, needs actual test code.
+		Const probably needed.
+Const
+	NEEDS PT
+	compiling from cmd line (#'d out in jc)
+	konst() should return a Stuff, or null. 
+PT
+	Needs xcmnt and other x data.
+---
+Plan:
+	Get PT working first
+	Then Const
+	Then use to write Stack.main tests
+---
+New Methods: code in PT.java 
+	to replace strncmp...
+		boolean match(String s1, String s2, int n) {   // arbitrary strings
+		boolean matcur(String token){                  // to cursor 
+New shell scripts:  gj sym, gc sym  --  Grep java/C code
+---------------------
+
+Tue, Feb 8
+STATUS
+	./setClassPath  sets to this works cls
+	./jc compiles Stuff,TJ,Stack
+	./clean removes class files
+	./run runs Stack.main which is a stub. No test code yet.
+	./gc sym greps the tiny-c source for sym
+	./gj sym ditto for java source
+Current work
+	Using $ javac -d cls src/tg37/tinyc/PT.java to java-ize PT
+	strncmp PT~17, replace with appropriate match(): ~15,21
+WONDERING if TJ should define tools like eset() and the match()'s ???
+	They use lots of TJ-dot, e.g. TJ.xcmnt.
+	The goal of a tool class is to make algorithms easy to code. All those
+		TJ-dots make for messy typing AND reading.
+	In effect merge TJ and PT.
+	A downside is all the parse tools become TJ.lit(TJ.xcmt)), for example.
+	So include that, too. Conclusion is layered code does not map into
+	classes unless you want to XX-dot everything. 
+EXTEND is the solution. PT extends TJ. All the TJ-dots disappear !!!
+	Higher layers extend lower layers, adding to them. But watch out names.
+	You lose the separation of name spaces. Not an issue for this project.
+---
+pr+cursor doesnt work. pr is char[], cursor is int.
+pr.substr(cursor) may work if pr is a String.
+STRING pr: Read file line-at-a-time appending into StringBuffer. Return 
+buffer.toString() which is done efficiently, no copying. Now tokenizing is
+done using substring, compareto, and more.
+---
+It seems to me that matching will be easier to write if all the pr text is
+an array of String tokens. How hard is it to write a tokenizer? One pass over 
+the read buffer into String token[]. Can I expand an array? Assume yes for now.
+First char is:
+	comment --  pass over
+	alpha  --  continue through alphanums
+	const  --  continue thru the constant
+	()[]   --  single char
+	ops    --  test for 2 chars
+Do a line at a time. 
+	FUTURE: 1st byte is token type.
+		matching []'s point to each other.
+		fcn call points to the fcn decl.   MAYBE MORE
+---------------------
+
+Wed, Feb 9
+Working on Token.java
+ArrayList~502 has addAll(Collection) 
 
 
 
