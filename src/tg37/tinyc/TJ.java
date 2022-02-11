@@ -8,7 +8,7 @@ static int STACKSIZE =    100;
 static int PRSIZE    =  10000;
 
 /* Global data */
-static char pr[] = new char[PRSIZE];
+static String pr;
 static int error;    // from list below. ZERO is good.
 static int errat;
 static int cursor;   // index into pr

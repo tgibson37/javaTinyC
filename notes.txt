@@ -324,7 +324,37 @@ Do a line at a time.
 
 Wed, Feb 9
 Working on Token.java
-ArrayList~502 has addAll(Collection) 
+ArrayList~502 has addAll(Collection)
+STATUS 1 pm: parses alphas & numbers. COMMITTED. And tidied. 
+NEED to add more types:
+	constants, operators, structure: {}[](), puctuation, other. Is that all ???
+	Add one at a time and let the tokenizer decide.
+AND: A small struct with just the type and token is what should be in token[].
+QUESTIONS: should I continue with arrays or should I use ArrayList ???
+---------------------
+
+Thur, Feb 10
+Back from Tokenizer, which is now in ../Java/Tokenizer. A copy is here as
+a package member.
+
+~282 STATUS is handy
+	~290 has javac for PT, PT extends TJ. NEED TJ.class
+	cls has only Token.class
+ALL fixed, ./jc now compiles PT with errors  <<==  AGENDA
+./jc now writes error file and does head -n 40
+---------------------
+
+Fri, Feb 11
+PT compiles. No main.
+STATUS
+	./jc compiles Stuff,TJ,Stack,PT
+
+
+
+
+
+
+
 
 
 
