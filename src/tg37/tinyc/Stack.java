@@ -1,4 +1,4 @@
-/*	Stack declares the stack, and offers basic push/pop methods.
+/*	Stack: local stack, basic push/pop methods.
  *	Requires TJ.class, specifically STACKSIZE.
  */
 package tg37.tinyc;

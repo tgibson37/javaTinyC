@@ -1,0 +1,2 @@
+#!/bin/sh
+export CLASSPATH="/home/tom/Projects/Java/tiny-c/cls"

@@ -7,15 +7,18 @@ package tg37.tinyc;
 class Sval extends Stuff {
 	String val;    // index into program space. Use pr(val) instead of *val
 	Sval(String v){ super(CHAR,v.length(),FALSE); val=v; }
-	String getStr(){return val;}
+	public String getStr(){ return val; }
+	public String toString(){ return val; }
 }
 class Cval extends Stuff {
 	char val;
 	Cval(char v){ super(CHAR,1,FALSE); val=v; }
+	public String toString(){ return String.valueOf(val); }
 }
 class Ival extends Stuff {
 	int val;
 	Ival(int v){ super(INT,1,FALSE); val=v; }
+	public String toString(){ return String.valueOf(val); }
 }
 
 public class Stuff {
@@ -43,11 +46,6 @@ public class Stuff {
 		case CHAR: v = ((Cval)this).val; break;
 		case INT:  v = ((Ival)this).val; break;
 		}
-/*		if(dtod==0){
-			if(type==0){v = ((Cval)this).val;}
-			else if(type==1)v = ((Ival)this).val;
-		}
-*/
 		return v;
 	}
 // tests...
@@ -55,9 +53,14 @@ public class Stuff {
 		Ival vi = new Ival(7);
 		Cval vc = new Cval('Q');
 		Sval vs = new Sval("foo-bar");
+		System.out.println("  using getters");
 		System.out.println(String.valueOf(vi.getInt()));
-		System.out.println(String.valueOf(vc.getInt()));
+		System.out.println(String.valueOf((char)vc.getInt()));
 		System.out.println(vs.getStr());
+		System.out.println("  using toString");
+		System.out.println(vi);
+		System.out.println(vc);
+		System.out.println(vs);
 	}
 }
 

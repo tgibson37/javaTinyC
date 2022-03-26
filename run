@@ -1,0 +1,3 @@
+clear
+#java tg37.tinyc.$1
+java tg37.tinyc.Expr
