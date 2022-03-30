@@ -189,7 +189,7 @@ Doing konst first.  ISSUES:
 	DECIDE where are fname,lname converted to a Stuff?
 		konst, or new fcn immediately after ?
 		Simplest is konst, then return a Stuff which is ample.
-Plan: git it to work returning code, than add conversion to Stuff.
+Plan: get it to work returning code, than add conversion to Stuff.
 STATUS: Wed 7pm: Working on PT.java. 
 ---------------------
 
@@ -226,7 +226,7 @@ Moved tiny-j under ~/Projects/Java.
 See ~/Projects/Java/Play/PackageFun for above goal. 
 Instead of a makefile I used a few very short bash scripts: 
 	setClassPath, jc (compile all), run, clean (remove class files). 
-And package name is /tg37/pkgTry. I know understand packaging much better.
+And package name is /tg37/pkgTry. I now understand packaging much better.
 
 STATUS:
 	must compile in specific order, so using jc to capture that order.
@@ -347,20 +347,197 @@ ALL fixed, ./jc now compiles PT with errors  <<==  AGENDA
 Fri, Feb 11
 PT compiles. No main.
 STATUS
-	./jc compiles Stuff,TJ,Stack,PT
+	./jc compiles Stuff,TJ,Stack,PT  <<== EVERYTHING
+	Token was moved to Projects/Java/Tokenizer, not in any package.
+Const next...
+	konst returns Type, not boolean. Type==0 means false.
+---
+Thoughts: 
+Building a parse tree might be fun. A [] block would contain ALL the
+statments withing the block. An fcn defn would have a Stuff of type FCN with 
+return type, name, args, body: 4 elements. Constants would be type and value: 
+ints would be parsed once at parse time, and value held as a java/C/whatever
+integer.
+---
+Structures:
+	TJ <- PT <- Const 
+	Stuff <- [S,C,I]val
+	Stack
+Expression Parser~393..675
+	asgn, expr, term, factor, konst  
+Rename Const.java -> Expr.java and do all 5 classes.
+Combine Stack and Stuff. OR put stuff into TJ.
+        ???        ???        ???        ???
+PLAN:
+x	Rename Const -> Expr
+x		Get it to compile
+		Design/code tests in main()
+	Add expression stack but factor does ONLY constant.
+	USES pushk & toptoi, so Stack gets tested, too.
+---------------------
+
+Sat, Feb 12
+A choice of goals: 
+	Work on tokenizer project until it can tokenize a tiny-c, C, or Java program.
+	Finish the java version of tiny-c.
+	The former gives me a nice publishable tool. The later a workable tiny-c.
+	But I can do tiny-c on my laptop, maybe. And the latter may be useful in
+	the former, giving it more purpose.
+Today I think I will do the tokenizer.
+---------------------
+
+Thur, Mar 24   --   (six week hiatus)
+With my C platform crashed I return to java. Recalling the status here...
+	No cmds file, but gc, gj, jc
+	jc compiles PT.java and Expr.java, and had also done Stuff & Stack.java.
+	gc/j greps code in two places: ../../tiny-c and ./src/tg37/tinyc/*.java
+	Setup: setClassPath sets to local cls dir only.
+Studying ~50 above, Stuff. 8080 code everything was an int when popped, but
+stack data described it. So Stuff is what is pushed/popped. 
+tc's class changed to dtod (distance to datum), 0 or 1. Avoids confusion.
+	3 subclasses: Sval,Cval,Ival hold respect. These ARE the values, there is
+	no value space allocated in pr.
+at ~184 above...
+	java Stack               <<-- "could not find..."
+	java tg37.tinyc.Stack    <<-- WORKS
+---
+$ java tg37.tinyc.Expr
+running Expr.main0 11
+ ~9 ~109             <<==   FREEZes
+ 	This must be my most recent status for tiny-c. 
+ 		~109 is in PT.java, rem.
+ 		pr code is set in Expr~46 to:   "  77  foo  "
+ 		~109 is while loop in rem() and ~123 when loop is done doesn't print.
+so konst() must call rem() ???    <-- YES
+	java .../PT runs OK
+this~320 above, the adventure into tokenizers  !!!
+	this~350 tokenizers seems to have been spun off for future, and effort
+	moved to konst, hence up the stack to asgn. Then distracted into antlr.
+Going back to Tokens for awhile.
+---------------------
+
+Sat, Mar 26
+Tokens is stable and tests fine at global level. Does not go into fcn's block. 
+Moved back here to use it as a tool. And renamed this tiny-c. I will focus on
+that until I have a servicable tc. There are now 2 tiny-c folders, the C version
+in Projects/tiny-c and this version on Projects/Java/tiny-c. I probably need to
+make some code changes to reflect this new goal and arrangement.
+SURVEY...
+	src/*.java    all early Feb dates
+		why ~s here and also above 
+	gj & other cmds
+diff PT*    seem to be debugging PT:    ~109 ~123 prints,  ~117 loop changes
+	  ^---  ParseTools, extends TJ, all token strings here, lit(), find(), etc.
+	debuggin infinite loop in rem
+run script: runs Expr, some ~s then FREEZes.  <<-- DEBUGGING target
+4 mains, all except TJ.
+	Stack not tested yet. Needed by Expr. Stuff is tested.
+---
+STATUS: Expr runs, konst parses an int 77, and quoted string.
+This code CHANGES the f/lname convention from '77 code (incl/incl) to C 
+	convention (incl/excl). Hopefully that will simplify things, but BEWARE!!!
+Stuff wrappers C/I/Sval have two value getters: toString, and getVal.
+	Keep both for awhile.
+---
+Next goal(s): 
+	the asgn...factor stack into expr.
+	Works w/ konst:  String test1 "1+2*3"; System.out.println(test);   <<-- 7
+		All relns tested true/false and borderline cases...
+			1<=2; 1>=2; 1==2; 1!=2;     TFFT
+			1<=1; 1>=1; 1==1; 1!=1;     TTTF
+			1<2;  1>2;  1<1;  1>1;      TFFF
+		Parens in factor...
+			(1+2)*3   <<-- 9
+	Save work so far as Project/Java/Expression
+	Commit/Push to new project: Expression
+---------------------
+
+Sun, Mar 27
+Above goal ~443: asgn etc into Expr.java
+	cp C code into java file
+	java-ize
+		factor: enuf to call konst, then test w/ numbers, no syms
+Subgoal (27 May, 1:30): NEEDed in Expr.reln()...
+	Stack tools: topdiff and whatever it needs.
+---
+STATUS: doing ~460 subgoal. The new stack pushes actual strings onto the stack.
+toptoi resolved by returning ptr to the string in pr, knowing it was a C string
+due to the trailing " mapped to 0. And it had int<->ptr coerson. What should the
+java tc do about string datum for toptoi call? Probably need topType(), and 
+toptodatum ??? What code should diagnose   x = 7 <= "foo"   statement ??? Not
+stack. Expr.reln() would be proper. So it needs types AND values.
+---------------------
+
+Mon, Mar 28
+Working on Stack.
+	Major change on lvalue: Because the value is part of Stuff an lvalue does
+	not have to be resolved. The val itself is changed. And class is now called
+	dtod (distance to datum) 0 or 1. These being delicate changes need thinking
+	through, carefully.
+	BUT for now get Stack to compile and the thorough shakedown.
+Stuff/Stack issues/thoughts...
+	How to declare the 3 types. They are manifest constants.
+	java 5 supports enums. Good read...
+	https://docs.oracle.com/javase/1.5.0/docs/guide/language/enums.html
+---------------------
+
+Tue, Mar 29
+Stuff is stabilized for constants, but NEEDs to support vars.
+Back to Stack. STATUS: NEEDs topdiff for use by Expr.reln().
+	Stuff needs boolean isInt(), isChar(), isStr()
+	Stack then writes    if(top.isInt())...     etc.
+LVALUE: resolved in Stack, or Stuff ???  I can face that issue later, for now
+	all stack stuff will be constants. Stuff carries the lvalue flag, so it
+	may be nice for it to handle in getInt().  
+Stuff will know nothing of vartab, and the values are in var now. So lvalue=='L'
+must go to the var. '77 tc lvalue=='L' case had a value that pointed into
+value space, which was in the call stack. READING enter().
+C code: newfun var~6, opens up stack frame. fundone closes it.
+	curfun, nxtvar, prused involved. prused was the value space.
+Confusion on Stuff flags, esp lvalue. pushst is not setting it
+properly. It pushes JUST stuff and returns. But stuff has lvalue
+'field' currently TRUE/FALSE. It is tested for 'L' 'A'. Changing to
+the latter.
+Stuff val is too complicated. Make getters abstract, and test first
+then call the right getter. Each val has its own way of returning
+a value, each getter a different signature, each abstract in Stuff
+itself so it is accessble at the Stuff level.
+---------------------
+
+Wed, Mar 30
+x	Fixing Stuff.val first
+x		Tested
+OPEN QUESTION: how does 77 tc handle primitive chars. They are popped as int
+using toptoi in C. Does putchar take an int? Should I have a getChar() in Stuff?
+Face this question later.
+Back to Stack:  working on topdiff()   <-- OK so far
+STATUS: works OK on constants, type 'A'. Array code is commented out.
+PLAN:
+	Study stack in tc code, list work to do
+		stack.c: 126 lines
+		basic: pushst~38, popst~52
+		convenient: topdiff,toptoi,pushk,pushPtr,pushone,pushzero
+			the latter 2 are really pushing a boolean, used by reln().
+		Have so far: basics, toptoi, topdiff.
+		Others are trivial, and can be done when needed.
+Decision: Stack is sufficient for now. RETURN to Expr, above~442
+	As tested Expr is OK. But the test is shallow: parses 2 constants,
+		77 and "foo"
+GOAL: parse and compute arithmetic: eg 1+2*3, and (1+2)*3 and more.
+	Do a readline to get the equation.
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	

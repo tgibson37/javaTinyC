@@ -42,12 +42,14 @@ static final String xnl = "\n";
 static final String xvarargs = "...";
 static final String xquote = "\"";
 
-/*	set error unless already set, capture cursor in errat */
+/*	set error unless already set, capture cursor in errat 
 public static void eset( int err ){
 	if(error != 0){
 		error = err; errat = cursor;
 	}
 }
+Moved to TJ
+*/
 
 /* Bump cursor over whitespace. Then return true on match and advance
    cursor beyond the literal else false and do not advance cursor

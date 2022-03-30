@@ -3,6 +3,9 @@
 package tg37.tinyc;
 
 public class TJ {
+	public static void eset(int e){
+		error = e; errat = cursor;
+	}
 //sizes
 static int STACKSIZE =    100;
 static int PRSIZE    =  10000;
