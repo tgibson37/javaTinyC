@@ -1,7 +1,8 @@
 /**	Stuff is a type free datum with description and value.
 	It is used on the Stack, and the Vartab. Derivatives 
 	hold values of type: int, char, string.
-NEED: support for vars, and lvalue. Below constructors do just constants. 
+NEED: support for vars, and lvalue. Below constructors do just constants.
+	Basically Stuff defines what goes on the Stack.
 */
 package tg37.tinyc;
 
@@ -22,6 +23,14 @@ class Cval extends Stuff {
 class Ival extends Stuff {
 	int val;
 	Ival(int v){ super(Type.INT,1,'A'); val=v; }
+	public String toString(){ return String.valueOf(val); }
+	int getInt(){return val;}
+	String getStr(){ eset(TYPEERR); return null; }
+}
+// used only by Expr.expr() for ptr +/- int
+class Pval extends Stuff {
+	int val;
+	Pval(int v){ super(Type.INT,1,'A'); val=v; dtod = 1; }
 	public String toString(){ return String.valueOf(val); }
 	int getInt(){return val;}
 	String getStr(){ eset(TYPEERR); return null; }

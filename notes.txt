@@ -524,20 +524,53 @@ Decision: Stack is sufficient for now. RETURN to Expr, above~442
 	As tested Expr is OK. But the test is shallow: parses 2 constants,
 		77 and "foo"
 GOAL: parse and compute arithmetic: eg 1+2*3, and (1+2)*3 and more.
-	Do a readline to get the equation.
+	THEN: Do a readline to get the equation, document, push.
+DONE:	commit Expr and stabilized Stuff/Stack.
+NEXT: test Expr more deeply.
+---
+ISSUE: Stack.pushPtr~61 pushes an array pointer. dtod is 1. type
+may be either. Stuff~33 declares dtod, but it is not used anywhere
+until arrays are implemented. Stuff~29 now has an empty Pval which will get
+coded then.
+x	Stack needs to implement pushPtr(int datum)
+---------------------
+
+Thur, Mar 31
+Test strategy: more and deeper equations using ints. Call asgn().
+toptoi() to get the result.
+	pr is declared in TJ~14 as String. The various test mains set
+it to whatever, and any code that extends TJ find that. Expr extends
+PT which extends TJ.
+---------------------
+
+Fri, Apr 1
+end of line problems. Expr main needs to be more careful.
+asgn given blanks cannot handle that. It assumes a context.
+Braces in test string do not help. konst cannot handle it either.
+	konst followed by spaces IS OK   "... 11  "
+ASSUME for now a proper context will make things good. Adding
+cursor test to asgn seems not a good idea. MAYBE a survey of PT
+code is needed. Goal now is to finish the 6 relation tests with
+a constant and spaces at the end.
+---
+STATUS: 12 reln test OK
+Next: More expr tests, see ~444 above
+Then: recode Expr.main as standalone tool, document, push.
 
 
 
 
 
 
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,24 +1,25 @@
 /*	Stack: local stack, basic push/pop methods.
- *	Requires TJ.class, specifically STACKSIZE.
+ *	Requires TJ.class, specifically STACKSIZE, Stuff.class which defines
+ *	a Stack entry.
  */
 package tg37.tinyc;
 
 public class Stack extends TJ {
-	static int nextstack=0;
-	static Stuff stack[] = new Stuff[TJ.STACKSIZE];
+	public static int nextstack=0;
+	public static Stuff stack[] = new Stuff[TJ.STACKSIZE];
 
 	/* basic pusher */
-	static void pushst(Stuff stuff) {
+	public static void pushst(Stuff stuff) {
 		if(nextstack >= TJ.STACKSIZE) TJ.error = TJ.PUSHERR;
 		else stack[nextstack++] = stuff;
 	}
 	/* basic popper, entry stays accessible until pushed over */
-	static Stuff popst() {
+	public static Stuff popst() {
 		if( --nextstack < 0 ) { TJ.error = TJ.POPERR; return null; }
 		return stack[nextstack];
 	}
 	/* used by Expr.reln() for relational ops (<=, etc) */
-	int topdiff() {
+	public static int topdiff() {
 		int b = toptoi();
 		int a = toptoi();
 		return ( a-b );
@@ -29,8 +30,9 @@ public class Stack extends TJ {
 	public static int toptoi() {
         int datum=9999999;
         Stuff stf;
-
+//System.err.print("Stack~33 nxtstack before pop: "+nextstack);
         Stuff top = popst();
+//System.err.println(" after: "+nextstack+", top: "+top);
 /*        if( top.dtod==1 ) {
                 if(top.lvalue == 'L') {
                         if(t.isNum()) datum=top.getInt();
@@ -52,6 +54,23 @@ public class Stack extends TJ {
         return datum;
     }
 
+/* push an int */
+	public static void pushk(int datum) {
+			pushst( new Ival(datum) );
+	}
+
+/* push an int as a class 1 */
+	public static void pushPtr(int datum) {
+			pushst( new Pval(datum) );
+	}
+
+/* these two used by RELN */
+	public static void pushone() {
+			pushk(1);
+	}
+	public static void pushzero() {
+			pushk(0);
+	}
 
 // tests...
 	static void kase(Stuff s, String sb) {

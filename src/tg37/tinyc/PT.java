@@ -57,10 +57,17 @@ Moved to TJ
 static boolean lit(String s){
 	int first,last;
 	first=last=cursor;
-	while( pr.charAt(first) == ' ' 
-		|| pr.charAt(first) == '\t' ) ++first;
+	int stop = endapp-s.length();
+//System.err.print("PT~61: s-->"+s+"<-- endapp stop: "+endapp+" "+stop+" first:");
+	while(first < stop) {
+//System.err.print(" "+first);
+		if( pr.charAt(first) == ' '	|| pr.charAt(first) == '\t' )
+			++first;
+		else break;
+	}
 	last = first+s.length();
-	if( s.equals(pr.substring(first,last)) ) {
+//System.err.println("PT~69 first,last,stop: " + first+" "+last+" "+stop);
+	if( last<=endapp && s.equals(pr.substring(first,last)) ) {
 		cursor += s.length();
 		return true;
 	}
@@ -79,8 +86,10 @@ static boolean lit(String s){
  */
 	static int find( int from, int upto, char c) {
 		int x = from;
-		while( pr.charAt(x) != c && x<upto) {
-			++x;
+		int stop = endapp-1;
+		while(x<stop) {
+			if( pr.charAt(x) != c && x<upto) ++x;
+			else break;
 		}
 		return x<upto ? x : 0;
 	}
@@ -104,22 +113,34 @@ static boolean lit(String s){
 		return 0;
 	}
 
-/*	skip over comments and/or empty lines in any order, new version
+/*	skip over comments and/or white space in any order, new version
 	tolerates 0x0d's, and implements // as well as old slash-star comments.
  */
 	static void rem() {
-		while(cursor<endapp) {
-			char c = pr.charAt(cursor);
-			while( c==0x0a || c==0x0d || c==' '	|| c=='\t' ) {
+		int c;
+		while(cursor<endapp-2) {
+			c = pr.charAt(cursor);
+			// skip whitespace 
+			while( cursor<endapp-2 &&           
+						( c==' ' || c==0x09 || c==0x0a || c==0x0d )  ) {
 				c = pr.charAt(++cursor);
 			}
-			if( !( lit(xcmnt)||lit(xcmnt2) ) ) break;
-			while( cursor<endapp && c != 0x0a && c != 0x0d ){
-				c = pr.charAt(cursor++);
+			// if not comment flag it must be code
+			if( !( lit(xcmnt)||lit(xcmnt2) ) ) {
+//System.err.println("Expr~129 cursor: "+cursor);
+				return;
 			}
+			// eat text to beginning of next line
+			while(cursor<endapp-1) {
+				c = pr.charAt(cursor);
+				if( c!=0x0a || c!=0x0d ) ++cursor;
+				else break;
+			}
+			// repeat the above for more comments
 		}
 		return;
 	}
+
 	public static void main(String args[]) {
 		System.out.println(xquote);
 	}

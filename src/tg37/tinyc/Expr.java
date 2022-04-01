@@ -3,9 +3,11 @@
 package tg37.tinyc;
 
 public class Expr extends PT {
+	static boolean trace=false;
 /* An ASGN is a reln or an lvalue = asgn. Note that reln can match an lvalue.
  */
 public static boolean asgn(){ 
+if(trace)System.err.println("asgn~9: " + pr.charAt(cursor) );
 	if(reln()){
 		if(lit(xeq)){
 			asgn();
@@ -15,9 +17,14 @@ public static boolean asgn(){
 	return error!=0;
 }
 
+private static int topdiff() { return Stack.topdiff(); }
+private static void pushone() { Stack.pushone(); }
+private static void pushzero() { Stack.pushzero(); }
+
 /* a RELN is an expr or a comparison of exprs
  */
 static boolean reln(){
+if(trace)System.err.println("reln~26: " + pr.charAt(cursor) );
 	if(expr()){
 		if(lit(xle)){
 			if(expr()){
@@ -44,13 +51,17 @@ static boolean reln(){
 			}
 		}
 		else if(lit(xgt)){
+//System.err.print("Expr~54");
 			if(expr()){
+//System.err.println("Expr~56");
 				if(topdiff()>0)pushone();
 				else pushzero();
 			}
 		}
 		else if(lit(xlt)){
+//System.err.print("Expr~62");
 			if(expr()){
+//System.err.println("Expr~64");
 				if(topdiff()<0)pushone();
 				else pushzero();
 			}
@@ -63,33 +74,34 @@ static boolean reln(){
 /* an EXPR is a term or sum (diff) of terms.
  */
 static boolean expr(){
+if(trace)System.err.println("expr~72: " + pr.charAt(cursor) );
 	if(lit(xminus)){    /* unary minus */
 		term();
-		pushk(-toptoi());
+		Stack.pushk(-Stack.toptoi());
 	}
 	else if(lit(xplus)){
 		term();
-		pushk(toptoi());
+		Stack.pushk(Stack.toptoi());
 	}
 	else term();
 	while(error==0){    /* rest of the terms */
-		int leftclass = stack[nxtstack-1].dtod;
+		int leftclass = Stack.stack[Stack.nextstack-1].dtod;
 		int rightclass;
 		if(lit(xminus)){
 			term();
-			rightclass = stack[nxtstack-1].dtod;
-			int b=toptoi();
-			int a=toptoi();
-			if( rightclass || leftclass) pushPtr(a-b);
-			else pushk(a-b);
+			rightclass = Stack.stack[Stack.nextstack-1].dtod;
+			int b=Stack.toptoi();
+			int a=Stack.toptoi();
+			if( rightclass>0 || leftclass>0 ) Stack.pushPtr(a-b);
+			else Stack.pushk(a-b);
 		}
 		else if(lit(xplus)){
 			term();
-			rightclass = stack[nxtstack-1].dtod;
-			int b=toptoi();
-			int a=toptoi();
-			if( rightclass || leftclass) pushPtr(a+b);
-			else pushk(a+b);
+			rightclass = Stack.stack[Stack.nextstack-1].dtod;
+			int b=Stack.toptoi();
+			int a=Stack.toptoi();
+			if( rightclass>0 || leftclass>0 ) Stack.pushPtr(a+b);
+			else Stack.pushk(a+b);
 		}
 		else return true;   /* is expression, all terms done */
 	}
@@ -99,33 +111,34 @@ static boolean expr(){
 /* a TERM is a factor or a product of factors.
  */
 static boolean term() {
+if(trace)System.err.println("term~109: " + pr.charAt(cursor) );
 	factor();
 	while(error==0) {
 		if(lit(xstar)){
 			factor();
-			if(error==0)pushk(toptoi()*toptoi());
+			if(error==0)Stack.pushk(Stack.toptoi()*Stack.toptoi());
 		}
 		else if(lit(xslash)){
 			if(pr.charAt(cursor)=='*' || pr.charAt(cursor)=='/') {
 				--cursor;    /* opps, its a comment */
-				return 1;
+				return true;
 			}
 			factor();
-			int denom = toptoi();
-			int numer = toptoi();
-			if(denom){
+			int denom = Stack.toptoi();
+			int numer = Stack.toptoi();
+			if(denom != 0){
 				int div = numer/denom;
-				if(error==0)pushk(div);
+				if(error==0)Stack.pushk(div);
 			}
 			else eset(DIVERR);
 		}
 		else if(lit(xpcnt)){
 			factor();
-			int b=toptoi();
-			int a=toptoi();
-			if(b){
+			int b=Stack.toptoi();
+			int a=Stack.toptoi();
+			if(b>0){
 				int pct = a%b;
-				if(error==0)pushk(pct);
+				if(error==0)Stack.pushk(pct);
 			}
 			else eset(DIVERR);
 		}
@@ -139,36 +152,38 @@ static boolean term() {
     instead of a returned true/false. This varies from the rest of the expression 
     stack.
  */
-void factor() {
-//	union stuff foo;
-	Type type;
-	int x;
+static void factor() {
+if(trace)System.err.println("factor~151: " + pr.charAt(cursor) );
+	int cur;
 	if(lit(xlpar)) {
 		asgn();
-		if( (x=mustFind( cursor, cursor+5, ')' , RPARERR )) ) {
-			cursor = x+1; /*after the paren */
-		}
+		cur=mustFind( cursor, cursor+5, ')' , RPARERR );
+		if(cur>0) cursor = cur+1; /*after the paren */
+		return;
 	} 
-	else if( (type=konst()) ) {
-	/* Defines fname,lname. Returns Type. 
-	   void pushst( int class, int lvalue, Type type, void* stuff );
-	*/
-		switch(type){
-		case Int: 
-			pushk( atoi() );  /* integer, use private atoi */
-			break;
-		case Char:
-			char ch = pr.charAt(fname);
-			Stuff s = new Cval(ch);
-			pushst( 0, 'A', type, s );
-			break;
-		case CharStar:		/* special type used ONLY here */
-			String str = new Sval(fname,lname);
-			pushst( 1, 'A', Char, str );
-		case Err:
-			return;
-		}
-	}
+
+	Stuff kon=konst();
+	if( kon!=null ) Stack.pushst(kon);  // All below info already in kon
+		// AND pushst 
+
+//	{
+//		Stuff.Type type;
+//		switch(kon.getType()){
+//		case 'I': 
+//			pushk( Stuff );  /* integer, use private atoi */
+//			break;
+//		case 'C':
+//			char ch = pr.charAt(fname);
+//			Stuff s = new Cval(ch);
+//			pushst( 0, 'A', type, s );
+//			break;
+//		case 'S':		/* special type used ONLY here, quoted string */
+//			String str = new Sval(fname,lname);
+//			pushst( 1, 'A', Char, str );
+//			break;
+//		}
+//	}
+
 //	else if( symName() ) {
 //		cursor = lname+1;
 //		int where, len, class, obsize, stuff;
@@ -266,18 +281,39 @@ void factor() {
 		} else return null;  /* no match */
 	}
 	public static void main(String args[]){
-		pr = "  77  \"foo\"  ";
-		endapp = pr.length();
-		cursor = 0;
-		System.out.println("running Expr.main");
+/*
+pr = "  77  \"foo\"  ";
+//    012345 6789 01234567890
 		System.out.println("Test case: "+pr);
 		System.out.println("           0123456789012345678901234567890");
 		System.out.println("cursor/endapp: "+ cursor + " " + endapp);
-		Stuff con = konst();
+		con = konst();
 		System.out.println("  Should be 77, is: "+con);
 		System.out.println("cursor/endapp: "+ cursor + " " + endapp);
 		con = konst();
 		System.out.println("  Should be foo, is: "+con);
 		System.out.println("cursor/endapp: "+ cursor + " " + endapp);
+*/
+//pr="  7<9  7>9  7<=9  7>=9  7==9  7!=9    11  "; //101001
+pr="  7<7  7>7  7<=7  7>=7  7==7  7!=7    11  "; //001110
+//  01234567890123456789
+		endapp = pr.length();
+		cursor = 0;
+		System.out.println("running Expr.main");
+		System.out.println("pr: -->>"+pr+"<<--");
+/*		Stuff con;
+		con = konst();
+		System.out.println("constant is "+con);
+		con = konst();
+		System.out.println("constant is "+con);
+ */
+		cursor = 0;
+		while(cursor<endapp-2){
+//System.err.println("Expr~307 cursor: "+cursor);
+			boolean b = asgn();
+//System.err.println("Expr~309 cursor: "+cursor);
+			int x = Stack.toptoi();
+			System.out.println("error: "+b + ", expression is " + x);
+		}
 	}
 }
