@@ -7,7 +7,7 @@ public class TJ {
 		error = e; errat = cursor;
 	}
 //sizes
-static int STACKSIZE =    100;
+//static int STACKSIZE =    100;
 static int PRSIZE    =  10000;
 
 /* Global data */
@@ -51,6 +51,7 @@ static int EQERR   =      27;
 static int PTRERR  =      28;
 static int APPERR  =      29;
 static int DIVERR  =      30;
+static int VARERR  =      31;
 
 /* signals */
 static int EXIT =         98;

@@ -58,16 +58,17 @@ static boolean lit(String s){
 	int first,last;
 	first=last=cursor;
 	int stop = endapp-s.length();
-//System.err.print("PT~61: s-->"+s+"<-- endapp stop: "+endapp+" "+stop+" first:");
+//System.err.print("\nPT~61: s-->"+s+"<-- endapp stop: "+endapp+" "+stop+" first:");
 	while(first < stop) {
 //System.err.print(" "+first);
-		if( pr.charAt(first) == ' '	|| pr.charAt(first) == '\t' )
-			++first;
+		char c = pr.charAt(first);
+		if( c == ' ' || c == '\t' ) ++first;
 		else break;
 	}
+	cursor = first;
 	last = first+s.length();
 //System.err.println("PT~69 first,last,stop: " + first+" "+last+" "+stop);
-	if( last<=endapp && s.equals(pr.substring(first,last)) ) {
+	if( last<endapp && s.equals(pr.substring(first,last)) ) {
 		cursor += s.length();
 		return true;
 	}

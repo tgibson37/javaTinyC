@@ -51,17 +51,13 @@ if(trace)System.err.println("reln~26: " + pr.charAt(cursor) );
 			}
 		}
 		else if(lit(xgt)){
-//System.err.print("Expr~54");
 			if(expr()){
-//System.err.println("Expr~56");
 				if(topdiff()>0)pushone();
 				else pushzero();
 			}
 		}
 		else if(lit(xlt)){
-//System.err.print("Expr~62");
 			if(expr()){
-//System.err.println("Expr~64");
 				if(topdiff()<0)pushone();
 				else pushzero();
 			}
@@ -85,11 +81,11 @@ if(trace)System.err.println("expr~72: " + pr.charAt(cursor) );
 	}
 	else term();
 	while(error==0){    /* rest of the terms */
-		int leftclass = Stack.stack[Stack.nextstack-1].dtod;
+		int leftclass = Stack.peekTop().dtod;
 		int rightclass;
 		if(lit(xminus)){
 			term();
-			rightclass = Stack.stack[Stack.nextstack-1].dtod;
+			rightclass = Stack.peekTop().dtod;
 			int b=Stack.toptoi();
 			int a=Stack.toptoi();
 			if( rightclass>0 || leftclass>0 ) Stack.pushPtr(a-b);
@@ -97,7 +93,7 @@ if(trace)System.err.println("expr~72: " + pr.charAt(cursor) );
 		}
 		else if(lit(xplus)){
 			term();
-			rightclass = Stack.stack[Stack.nextstack-1].dtod;
+			rightclass = Stack.peekTop().dtod;
 			int b=Stack.toptoi();
 			int a=Stack.toptoi();
 			if( rightclass>0 || leftclass>0 ) Stack.pushPtr(a+b);
@@ -163,26 +159,7 @@ if(trace)System.err.println("factor~151: " + pr.charAt(cursor) );
 	} 
 
 	Stuff kon=konst();
-	if( kon!=null ) Stack.pushst(kon);  // All below info already in kon
-		// AND pushst 
-
-//	{
-//		Stuff.Type type;
-//		switch(kon.getType()){
-//		case 'I': 
-//			pushk( Stuff );  /* integer, use private atoi */
-//			break;
-//		case 'C':
-//			char ch = pr.charAt(fname);
-//			Stuff s = new Cval(ch);
-//			pushst( 0, 'A', type, s );
-//			break;
-//		case 'S':		/* special type used ONLY here, quoted string */
-//			String str = new Sval(fname,lname);
-//			pushst( 1, 'A', Char, str );
-//			break;
-//		}
-//	}
+	if( kon!=null ) Stack.pushst(kon);
 
 //	else if( symName() ) {
 //		cursor = lname+1;
@@ -238,7 +215,7 @@ if(trace)System.err.println("factor~151: " + pr.charAt(cursor) );
 
 //  good java below
 	public static Stuff konst() {
-		int lname,fname;
+//		int lname,fname;
 		int x;  //index into pr
 		rem();
 		char c = pr.charAt(cursor);
@@ -281,38 +258,22 @@ if(trace)System.err.println("factor~151: " + pr.charAt(cursor) );
 		} else return null;  /* no match */
 	}
 	public static void main(String args[]){
-/*
-pr = "  77  \"foo\"  ";
-//    012345 6789 01234567890
-		System.out.println("Test case: "+pr);
-		System.out.println("           0123456789012345678901234567890");
-		System.out.println("cursor/endapp: "+ cursor + " " + endapp);
-		con = konst();
-		System.out.println("  Should be 77, is: "+con);
-		System.out.println("cursor/endapp: "+ cursor + " " + endapp);
-		con = konst();
-		System.out.println("  Should be foo, is: "+con);
-		System.out.println("cursor/endapp: "+ cursor + " " + endapp);
-*/
-//pr="  7<9  7>9  7<=9  7>=9  7==9  7!=9    11  "; //101001
-//pr="  7<7  7>7  7<=7  7>=7  7==7  7!=7    11  "; //001110
-pr="  77  \"foo\"  ";
-//  01234567890123456789
+//pr="  77  \"foo\"    7<9  7>9  7<=9  7>=9  7==9  7!=9    88  "; //77foo 101001 88
+//pr="  77  \"foo\"    7<7  7>7  7<=7  7>=7  7==7  7!=7    88  "; //77foo 001110 88
+pr="         (1+2)*3  3*(1+2)  (1+2*3)  1+(2*3) 88 ";       // null null 9 9 7 7 88
+//  012345678901234567890123456789012345678901234567890123456789
+//            1         2         3         4         5
 		endapp = pr.length();
 		cursor = 0;
 		System.out.println("running Expr.main");
 		System.out.println("pr: -->>"+pr+"<<--");
-/*		Stuff con;
+		Stuff con;
 		con = konst();
 		System.out.println("constant is "+con);
 		con = konst();
 		System.out.println("constant is "+con);
- */
-		cursor = 0;
 		while(cursor<endapp-2){
-//System.err.println("Expr~307 cursor: "+cursor);
 			boolean b = asgn();
-//System.err.println("Expr~309 cursor: "+cursor);
 			int x = Stack.toptoi();
 			System.out.println("error: "+b + ", expression is " + x);
 		}

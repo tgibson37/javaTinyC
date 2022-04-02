@@ -27,7 +27,7 @@ class Ival extends Stuff {
 	int getInt(){return val;}
 	String getStr(){ eset(TYPEERR); return null; }
 }
-// used only by Expr.expr() for ptr +/- int
+// used only by Expr.expr() for expression: ptr +/- int
 class Pval extends Stuff {
 	int val;
 	Pval(int v){ super(Type.INT,1,'A'); val=v; dtod = 1; }
@@ -69,6 +69,8 @@ abstract public class Stuff extends TJ {
 		char t = getType();
 		return t=='S';
 	}
+	static Ival createIval(int i){ return new Ival(i); }
+	static Cval createCval(char c){ return new Cval(c); }
 // tests...
 	public static void main(String[] args){
 		Ival vi = new Ival(7);

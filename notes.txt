@@ -555,10 +555,58 @@ a constant and spaces at the end.
 ---
 STATUS: 12 reln test OK
 Next: More expr tests, see ~444 above
+x		Parens in factor...
+x			(1+2)*3   <<-- 9
 Then: recode Expr.main as standalone tool, document, push.
+ISSUE: If asgn sees a space it goes all the way to factor to
+x	realize that, and then advances over ONE SPACE, returns to
+x	test code which calls asgn again.   FIXED 
+Expr seems solid.
+x	commit
+Large block of code in factor() commented out. It calls 
+symName and var mainly, class 'E' is one line. It calls addrval. To test it
+requires the vtab. That seems a reasonable goal. Would not need to parse decls,
+var.java main would make calls using quoted names. var.c is the code, 162 lines
+excluding dumps. 
+---
+	newfun~6
+	fundone~25
+	copyArgValue~39		maybe later
+	allocSpace~60		maybe not needed
+	newvar~78
+	canon~98			ditto
+	addrval~131			3 flavors, 2 are support for the ONE used elsewhere.
+	dumps~165			maybe not needed
+So just framing and newvar and addrval, 4 methods, all public.
+---
+ISSUE: why an array? Same issue for Stack. Could be a list.
+DECision: Var.java is just a list of local hashmaps plus global and
+lib hashmaps.
+x	Make Stack be a List  
+---------------------
+
+Sat, Apr 2
+Goal today: var.java
+	cp'd from tiny-c
+	java-ized, compiles
+	test main
+	seems OK
+---
+This impl of tc's variables: 
+	Stuff has full description of a var except for its name.
+	Stuff has the var's value, so no allocation is needed.
+	Hence no need for obsize, which is now gone.
+ISSUE on Array:
+	Haven't got there yet. But an array must be a List<Stuff>,
+	or maybe Stuff[]. Code so far only handles simple Stuff.
+Var ready to test. Cases: push several vars into about 5 places
+and then retrieve and test them, and do a fundone and retrieve
+and print them again. lib1, foo, glb1, bar, nwfun, lcl1, nwfun, lcl2,
+foo. THEN lookup each w/ curfun at 2nd local.
+	Need to set/get values in some.
 
 
-
+	
 
 
 

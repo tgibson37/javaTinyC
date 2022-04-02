@@ -3,21 +3,21 @@
  *	a Stack entry.
  */
 package tg37.tinyc;
+import java.util.*;
 
 public class Stack extends TJ {
-	public static int nextstack=0;
-	public static Stuff stack[] = new Stuff[TJ.STACKSIZE];
+//	public static StackImpl<Stuff> stack = new StackImpl<Stuff>();
+	static StackImpl<Stuff> stack = new StackImpl<Stuff>();
 
 	/* basic pusher */
 	public static void pushst(Stuff stuff) {
-		if(nextstack >= TJ.STACKSIZE) TJ.error = TJ.PUSHERR;
-		else stack[nextstack++] = stuff;
+		stack.push(stuff);
 	}
 	/* basic popper, entry stays accessible until pushed over */
 	public static Stuff popst() {
-		if( --nextstack < 0 ) { TJ.error = TJ.POPERR; return null; }
-		return stack[nextstack];
+		return stack.pop();
 	}
+	public static Stuff peekTop() { return stack.peekTop(); }
 	/* used by Expr.reln() for relational ops (<=, etc) */
 	public static int topdiff() {
 		int b = toptoi();
@@ -30,9 +30,7 @@ public class Stack extends TJ {
 	public static int toptoi() {
         int datum=9999999;
         Stuff stf;
-//System.err.print("Stack~33 nxtstack before pop: "+nextstack);
         Stuff top = popst();
-//System.err.println(" after: "+nextstack+", top: "+top);
 /*        if( top.dtod==1 ) {
                 if(top.lvalue == 'L') {
                         if(t.isNum()) datum=top.getInt();
@@ -87,4 +85,30 @@ public class Stack extends TJ {
 		kase( str = new Sval("A string"), "error msg" );
 		System.out.println("Sval as string: "+str.getStr());
 	}
+}
+/*	Ref: https://contactsunny.medium.com/stack-implementation-example-in-java-9e2923fab87e
+ */
+class StackImpl<Stuff> {
+    private List<Stuff> list = new ArrayList<Stuff>();
+    public long size() { return this.list.size(); }
+    void push(Stuff value) { list.add(value); }
+    Stuff pop() {
+        if (this.list.isEmpty()) { PT.eset(TJ.POPERR); }
+        Stuff value = this.list.get(this.list.size() - 1);
+        this.list.remove(this.list.size() - 1);
+        return value;
+    }
+    Stuff peekTop() {
+        if (this.list.isEmpty()) { PT.eset(TJ.POPERR); }
+        Stuff value = this.list.get(this.list.size() - 1);
+        return value;
+    }
+    List<Stuff> getStackAndEmpty() {
+        List<Stuff> stack = new ArrayList<Stuff>(this.list);
+        this.list.removeAll(stack);
+        return stack;
+    }
+//    void flush() {
+//        this.list = new ArrayList<>();
+//    }
 }
