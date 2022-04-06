@@ -604,9 +604,74 @@ and then retrieve and test them, and do a fundone and retrieve
 and print them again. lib1, foo, glb1, bar, nwfun, lcl1, nwfun, lcl2,
 foo. THEN lookup each w/ curfun at 2nd local.
 	Need to set/get values in some.
+---------------------
+
+Sun, Apr 3
+x	newfun, fundone, newvar tested OK
+x	dumpVarTab OK
+x	addrval
+---
+Studying test.c to determine order of writing the C version.
+The big switch is ~168. cases & targets...
+			java status: x done, + partial 
++	1	newvar, vartab,	char, varalloc
+x	10	stack
++	13	parse tools: skips, rem, konst...
+x	17	newvar, vartab, addrval
+x	18	expr
+	21	decl and asgn, beginning of st(), array, 
+	25	MC
+	26	if else
+	27/8 empty cases
+	29	st
+	30 up used testfiles, code frags
+	34	link
+	40	pps lib stuff (ps, pn, etc)
+	73 up used bashfiles to run whole progs
+Richer st() seems to be next item.
+---------------------
+
+Mon, Apr 4
+new file: ST.java,    statement,  ST.st(). It needs a few support fcns...
+	quit()
+quit has an issue: it needs a key listener which in java requires
+at least AWT. Goggled "java key listener" and tried one way that
+failed. See Projects/TryIt/FIR.java. Looking around for another way.
+One fallback is a tiny AWT with just a quit button. Fire up the
+console app and get the button on the side. LEAVE THIS WHOLE ISSUE
+ASIDE for awhile. ^C does a quit. So focus on... 
+---
+GOAL: st() executes something minimal, then grow
+$ ./gc stcurs
+../../tiny-c/tc.c:375:	stcurs=localstcurs;   enter()
+../../tiny-c/tc.c:387:	stcurs=localstcurs;   enter()
+../../tiny-c/tc.c:765:	stcurs = cursor;      st()
+../../tiny-c/tc.c:809:	agin = stcurs;
+../../tiny-c/tc.h:117:char* stcurs;
+---------------------
+
+Wed, Apr 6
+Working on ST, incl decl, varalloc; and PT.symName.
+dtod mystery: Studying tc.c code... 
+	varAlloc(type,vpassed)
+		symName (success required), the tests for '('
+		computes vclass,alen, (both local) 
+		calls newvar(vclass,type,alen,vpasses)
+	newvar
+tc.c code: vclass is declared in tc.h, but used only in
+varAlloc, and passed to newvar as an arg. TIDYING THES AWKWARDness:
+Called dtod now. Declaring as local in varAlloc. 	DITTO alen.
+x	Works
+	commit
 
 
-	
+
+
+
+
+
+
+
 
 
 

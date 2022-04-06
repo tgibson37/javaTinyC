@@ -15,8 +15,11 @@ static String pr;
 static int error;    // from list below. ZERO is good.
 static int errat;
 static int cursor;   // index into pr
+static int stcurs;
 static int fname,lname;  // most recently matched symbol
 static int endapp;
+static boolean leave;
+static boolean brake;
 
 // booleans
 static int TRUE = 1;

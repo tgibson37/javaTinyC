@@ -1,5 +1,6 @@
-/*	Parse tools: boolean symNameIs, int find, int mustFind, findEOS, rem.
- *	returned ints are indexes into pr.
+/*	Parse tools: boolean lit, boolean symNameIs, int find, int mustFind, 
+ *	int findEOS, void rem. Returned ints are indexes into pr. Only lit and rem
+ *	bump the cursor.
  */
 
 package tg37.tinyc;
@@ -42,14 +43,7 @@ static final String xnl = "\n";
 static final String xvarargs = "...";
 static final String xquote = "\"";
 
-/*	set error unless already set, capture cursor in errat 
-public static void eset( int err ){
-	if(error != 0){
-		error = err; errat = cursor;
-	}
-}
-Moved to TJ
-*/
+static int fname,lname;
 
 /* Bump cursor over whitespace. Then return true on match and advance
    cursor beyond the literal else false and do not advance cursor
@@ -58,21 +52,32 @@ static boolean lit(String s){
 	int first,last;
 	first=last=cursor;
 	int stop = endapp-s.length();
-//System.err.print("\nPT~61: s-->"+s+"<-- endapp stop: "+endapp+" "+stop+" first:");
 	while(first < stop) {
-//System.err.print(" "+first);
 		char c = pr.charAt(first);
 		if( c == ' ' || c == '\t' ) ++first;
 		else break;
 	}
 	cursor = first;
 	last = first+s.length();
-//System.err.println("PT~69 first,last,stop: " + first+" "+last+" "+stop);
 	if( last<endapp && s.equals(pr.substring(first,last)) ) {
 		cursor += s.length();
 		return true;
 	}
 	return false;
+}
+/* Parse a symbol defining fname, lname. ret: true if symbol.
+ *      Advances the cursor to but not over the symbol,
+ */
+static boolean symName() {
+        int temp;
+        char c = pr.charAt(cursor);
+        while( c == ' ' || c == '\t' ) c = pr.charAt(++cursor);
+        temp=cursor;
+        if( Character.isLetter(c) || c=='_') fname = temp;
+        else return false;
+        while( Character.isLetterOrDigit(c=pr.charAt(++temp)) || c=='_') ;
+        lname = temp;
+        return true;  /* good, fname and lname defined */
 }
 
 /*	return true if symname matches arg, no state change 
@@ -143,6 +148,8 @@ static boolean lit(String s){
 	}
 
 	public static void main(String args[]) {
-		System.out.println(xquote);
+pr="   foo   ";
+		symName();
+		System.out.println("PT~154 first,last = "+fname+", "+lname);
 	}
 }
