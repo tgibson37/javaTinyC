@@ -12,18 +12,25 @@ static int PRSIZE    =  10000;
 
 /* Global data */
 static String pr;
+static int lpr, apr, endapp, prused, EPR;
+/* EPR is end of program SPACE. 
+ *      pr starts with startSeed, then libs, then app, then values
+ *      lpr is start of libraries
+ *      apr is start of application program
+ *      endapp is end of ALL program text, 
+ *      endapp+10 start of value space
+ *      prused includes values, moves up/down with fcn entry/leaving
+ *      EPR is pointer to last byte of pr array
+ */
 static int error;    // from list below. ZERO is good.
-static int errat;
+static int errat;	 // where error occurred
+static boolean quiet;
 static int cursor;   // index into pr
-static int stcurs;
+static int stcurs;	 // current statement
 static int fname,lname;  // most recently matched symbol
-static int endapp;
-static boolean leave;
-static boolean brake;
-
-// booleans
-static int TRUE = 1;
-static int FALSE = 0;
+static boolean leave;	// set true by return statement
+static boolean brake;	// set true by break statement
+// leave and brake are restored to false when their respective action is complete.
 
 /* type flags */
 static int CHAR = 0;

@@ -31,20 +31,16 @@ public class Stack extends TJ {
         int datum=9999999;
         Stuff stf;
         Stuff top = popst();
-/*        if( top.dtod==1 ) {
-                if(top.lvalue == 'L') {
-                        if(t.isNum()) datum=top.getInt();
+        if( top.isArray ) { 
+                if(top.lvalue) {
+                        if(top.isNum()) datum=top.getInt();
                         else eset(LVALERR);
                 }
-                else datum=(int)(top.value.up);
+                else datum=(int)(top.getInt());
         }
         else
-*/
-        if(top.lvalue == 'L') {
-                if(top.isNum()) datum  = top.getInt();
-                else eset(TYPEERR);
-        }
-        else if(top.lvalue == 'A') {
+
+        if(top.lvalue) {
                 if(top.isNum()) datum  = top.getInt();
                 else eset(TYPEERR);
         }
@@ -82,8 +78,11 @@ public class Stack extends TJ {
 		System.out.println("running Stack.main");
 		kase( new Ival(77), "77" );
 		kase( new Cval('A'), "65" );
-		kase( str = new Sval("A string"), "error msg" );
-		System.out.println("Sval as string: "+str.getStr());
+		str = new Sval("A string via getStr(), then via getInt()");
+		System.out.println(" proper call: "+((Sval)str).getStr());
+		System.out.println(" intentional getInt() call:");
+		kase( str, "9s" );
+		System.out.println("      and eset(TYPEERR)");
 	}
 }
 /*	Ref: https://contactsunny.medium.com/stack-implementation-example-in-java-9e2923fab87e

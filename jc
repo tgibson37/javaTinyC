@@ -1,14 +1,12 @@
 #!/bin/sh
 clear
 date > errs
-javac -d cls  src/tg37/tinyc/TJ.java 2>> errs
+#javac -d cls  src/tg37/tinyc/TJ.java 2>> errs
+#javac -d cls  src/tg37/tinyc/Dialog.java 2>> errs
 #javac -d cls src/tg37/tinyc/Stuff.java 2>> errs 
 #javac -d cls src/tg37/tinyc/Stack.java 2>> errs
-javac -d cls src/tg37/tinyc/PT.java 2>> errs
+#javac -d cls src/tg37/tinyc/PT.java 2>> errs
 #javac -d cls src/tg37/tinyc/Expr.java 2>> errs
-#javac -d cls src/tg37/tinyc/Var.java 2>> errs
-javac -d cls src/tg37/tinyc/ST.java 2>> errs
-
-#javac -d cls src/tg37/tinyc/*.java 2>> errs
-
+#javac -d cls src/tg37/tinyc/ST.java 2>> errs
+javac -d cls src/tg37/tinyc/Var.java 2>> errs
 head errs -n 20

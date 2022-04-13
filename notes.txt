@@ -662,7 +662,137 @@ tc.c code: vclass is declared in tc.h, but used only in
 varAlloc, and passed to newvar as an arg. TIDYING THES AWKWARDness:
 Called dtod now. Declaring as local in varAlloc. 	DITTO alen.
 x	Works
-	commit
+x	commit    (just varAlloc)
+---
+NEXT: link as fcn in Var
+---
+struct funentry *fun, tc.h~78. 
+	fun,curglbl,curfun,efun are all ptr to funentry
+	newfun/fundone must be involved. All part of Var.
+	fun IS the fun table. Should be called funtab. Others pnt to 
+		sections of the table.
+Don't need curglbl, etc. Not even fun. The Map/List containers are
+sufficient. newnum and fundone are complete and tested. So all those
+pointers have no equivalent in this version except curfun which jumps
+around to different maps. NEED: addrval java-ized.
+---
+STATUS: goal is big-bang compile, incl link(). Then do TC.main which should drag
+in whatever else is needed to complete. 
+---
+Confusion stack vs vartab: Stuff designed for stack data. 
+	NEED to create function entry for vartab. Stuff.Type.FCN
+class Var IS a variable, and its 3 containers, too. Var data is
+taken from tc's struct var. 
+x	Var should NOT extend PT. It is not a parse tool.
+	Needs constructor.
+	Probably the containers should be in their own class, not Var itself.
+		Vartab ???
+---------------------
+
+Fri, Apr 8
+Broadening the role of Stuff so it can be used as part of a Var.
+But Var includes function, so...
+x	A Var has Stuff in it. Stuff has 4 types: INT,CHAR,STR,FCN
+	Move useless getters out of Stuff into the derivative.
+	Always test the type before calling a getter.
+Thought: dtod should be boolean isArray
+---------------------
+
+Sat, Apr 9
+Working to get a compile for...
+	Stuff
+	Var
+	All
+new Ival issue ???  Going to clean dir, Java/TryIt
+	TryIt goal is smallest code that has the non-static complaint.
+	Complaining about use of nonstatic var in constructor.
+---------------------
+
+Mon, Apr 11
+STATUS: Now have Stuff.java and Stuff.bak, an older version. And 2 dot-baks.
+One is in Projects/TryIt. 
+	Another in Projects/Java/TryIt. This latter one is where I experimented with
+cloning, and got some evidence how to make sub classes cloneable.
+	Then I wondered do I need cloning at all? Var is a variable description
+and goes into var tables. Stuff is a value description and goes onto the Stack.
+A Var has a Stuff which has the Var's value. eq() will be involved. A Stuff will
+need a value setter.
+PLAN is to not do a clone, but role foreward towards a working asgn() in Expr.
+But which of the Stuffs is the base? Grep the various source dates.
+	Stuff.java~			 Jan 27 14:20    1693 bytes [d0]
+	src/*/*/Stuff.java~  Apr 8, 08:52 	 3588		[d1 diff]
+	Stuff.bak			 Apr 9, 08:56    3603		[d2 diff]
+	src/*/*/Stuff.java   Apr 9, 12:15	 3994		[d3 diff]
+d0: dtod,lvalue,type,len,getInt(). Manifests all int. Sval,Cval,Ival. 
+d1: isarray, "    "   " ,toStrinng(), many getters, enum manifests.
+d2: ~52,103 changes. vc commented out. Ival's super(..) commented out.
+d3: tons of changes. booleans instead of enums. richer constructors. Base vs
+derived class details sorted out. This IS the latest and probably the best and 
+the only dot-java (others are bak or ~). Pval derivative commented out. Not sure
+it is needed. All tests OK.
+---
+Goal: Run all tests one at a time.
+x	Stuff
+x	Stack
+	Expr	fails
+x	PT
+	TJ	(no main)
+x	Dialog
+x	ST
+	Var		fails
+----
+x	NEED getInt() abstract in Stuff and invalid calls eset(TYPEERR).		
+	Issue: what is diff between Stack and StackImpl. NEED peekTop USAGE.
+---------------------
+
+Tue, Apr 11
+Working on Expr. Stuff and Stack seem settled down.
+8am: Expr also OK, ditto PT, and now (noon) Var.
+File toc:
+	PT		x.. Strings,f/lname,lit,symNames,finds,rem
+	TJ		eset,PRSIZE,pr indices, error/at, cursors, leave,brake, 
+		another f/lname, type flags, error tags
+	Dialog	countch,errToWords,f/lchar,whatHpnd,showLine,simple prints,logo
+	ST		st,quit,skip,decl,varAlloc
+	Stuff	type,len,lvalue,isArray,Stuff(.),getType/Int,isXxx,createI/C/Fval,
+		S/C/I/P/Fval
+	Stack	stack,pushst/k/Ptr/one/zero,popst,topdiff,toptoi,StackImpl
+	Expr	asgn..factor,konst
+	Var		isArray,type,len,value;containers:lib,globals,locals;newfun,fundone,
+		copyArgValue,Var,addrvals,peekTop,dumps,tclink
+---------------------
+
+Wed, Apr 12
+NEXT: tcMain.c, 200 lines. main is ~183, 20 lines, lots of dash options: lqdvr.
+Postponing those, the logic is:
+	allocStuff
+	cp seed code
+	set cpr,endapp,prused indices beyond the seed
+	set cursor & curglbl
+	load default library, mark end
+	load app code
+	set nxtvar, nxtstack, curfun
+	logo
+	link
+	setcursor
+	st()
+	whatHappened
+allocStuff~148   probably mute because we use java containers
+	prlen [check pps/tc.prop for override]
+	funlen [ditto]
+	stacklen [ditto]
+	vtablen [ditto]
+java version may start out much simpler:
+	cp seed code
+	load code: lib and app
+	set whatever
+	link
+	st
+	whatHappened
+Hmm. Code from scratch, and use tc.c as reference, not code to java-ize ???
+New file: TC.java ???
+	
+	
 
 
 
@@ -672,16 +802,12 @@ x	Works
 
 
 
-
-
-
-
-
-
-
-
-
-
+	
+	
+	
+	
+	
+	
 
 
 

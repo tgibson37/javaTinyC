@@ -81,22 +81,22 @@ if(trace)System.err.println("expr~72: " + pr.charAt(cursor) );
 	}
 	else term();
 	while(error==0){    /* rest of the terms */
-		int leftclass = Stack.peekTop().dtod;
-		int rightclass;
+		boolean leftIsArray = (Stack.peekTop()).isArray;
+		boolean rightIsArray;
 		if(lit(xminus)){
 			term();
-			rightclass = Stack.peekTop().dtod;
+			rightIsArray = Stack.peekTop().isArray;
 			int b=Stack.toptoi();
 			int a=Stack.toptoi();
-			if( rightclass>0 || leftclass>0 ) Stack.pushPtr(a-b);
+			if( rightIsArray || leftIsArray ) Stack.pushPtr(a-b);
 			else Stack.pushk(a-b);
 		}
-		else if(lit(xplus)){
+		else if(lit(xplus)){  // ISSUE: merge these 2 cases ???
 			term();
-			rightclass = Stack.peekTop().dtod;
+			rightIsArray = Stack.peekTop().isArray;
 			int b=Stack.toptoi();
 			int a=Stack.toptoi();
-			if( rightclass>0 || leftclass>0 ) Stack.pushPtr(a+b);
+			if( rightIsArray || leftIsArray ) Stack.pushPtr(a+b);
 			else Stack.pushk(a+b);
 		}
 		else return true;   /* is expression, all terms done */
@@ -258,11 +258,13 @@ if(trace)System.err.println("factor~151: " + pr.charAt(cursor) );
 		} else return null;  /* no match */
 	}
 	public static void main(String args[]){
-//pr="  77  \"foo\"    7<9  7>9  7<=9  7>=9  7==9  7!=9    88  "; //77foo 101001 88
-//pr="  77  \"foo\"    7<7  7>7  7<=7  7>=7  7==7  7!=7    88  "; //77foo 001110 88
-pr="         (1+2)*3  3*(1+2)  (1+2*3)  1+(2*3) 88 ";       // null null 9 9 7 7 88
+String pr0 ="  77  \"foo\"    7<9  7>9  7<=9  7>=9  7==9  7!=9    88  "; //77foo 101001 88
+String pr1 ="  77  \"foo\"    7<7  7>7  7<=7  7>=7  7==7  7!=7    88  "; //77foo 001110 88
+String pr2 ="         (1+2)*3  3*(1+2)  (1+2*3)  1+(2*3) 88 ";       // null null 9 9 7 7 88
 //  012345678901234567890123456789012345678901234567890123456789
 //            1         2         3         4         5
+pr = pr2;     // NOTE: expecteds in above comments    --------------------^
+// Must pass all tests.
 		endapp = pr.length();
 		cursor = 0;
 		System.out.println("running Expr.main");
