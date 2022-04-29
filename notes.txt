@@ -762,7 +762,7 @@ File toc:
 		copyArgValue,Var,addrvals,peekTop,dumps,tclink
 ---------------------
 
-Wed, Apr 12
+Wed, Apr 13
 NEXT: tcMain.c, 200 lines. main is ~183, 20 lines, lots of dash options: lqdvr.
 Postponing those, the logic is:
 	allocStuff
@@ -790,9 +790,52 @@ java version may start out much simpler:
 	st
 	whatHappened
 Hmm. Code from scratch, and use tc.c as reference, not code to java-ize ???
-New file: TC.java ???
-	
-	
+New file: TC.java
+---------------------
+
+Thur, Apr 14
+STATUS: TC.java reads foo.tc and prints it.
+GOALs:
+x	TC: full load of pr incl seed, pps/library.tc, xendlib, foo.tc
+	foo.tc uses ps, links and runs OK
+	survey for commented out TODO code, and bring them up
+---------------------
+
+Mon, Apr 18, Happy Easter
+Status: discovering status. ~800 above is the goal. New code in TC, ST, Var.
+Running	TC with foo.tc arg as test. 2:45pm running now, but tclink produces
+empty dumpVarTab. STATUS: debugging tclink, Var~119.
+---------------------
+
+Thur, Apr 21
+Status: debugging tclink. Infinite loop. Running...
+	./r TC foo.tc
+	foo just pl's a String
+	lpr/apr/EPR all OK
+	issue is in checkBrackets
+		lpr: cursor 9...5500, error 0
+		GLOBALS: 5500...???, error 2023, cursor DID NOT ADVANCE
+---------------------
+
+Fri, Apr 22
+The only foo.tc global is foo itself.  
+	The first bracket test is the seed, cursor = 0..9
+	The second test is libs, 10..5500 which includes the 'endlibrary'
+		Is pps/library.tc 
+	The third test is the app, foo.tc. It is never reached.
+	Why both EPR and endapp? 
+		Both in TJ~15, legacy from data being in pr from endapp to EPR.
+			24 endapp hits, 7 EPR
+---------------------
+
+Thur, Apr 28
+Dumps in TC,Var show only 
+	ONE symbol hit (Var~156)
+	One entry in libs, none in globals  [dumping map.size()]
+		dump of the one needs work
+	SHOULD have all libs, and two globals: foo, main
+x		BUT foo needs a main.
+	WHY is the loop not looping ???
 
 
 

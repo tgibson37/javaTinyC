@@ -1,2 +1,2 @@
-clear
-java tg37.tinyc.$1
+#clear
+java tg37.tinyc.$*

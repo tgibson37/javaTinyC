@@ -16,7 +16,7 @@ public static void st() {
 	int whstcurs, whcurs, objt, agin ;
 	brake=false;
 
-	if(quit())return;
+//	if(quit())return;
 	rem();
 	stcurs = cursor;
 	if(decl()){
@@ -146,11 +146,14 @@ public static void skipSt() {
  *      Returns 0 on OK, else count of missing ]'s.
  */
 public static int skip(char l, char r) {
+//boolean dump = (cursor>5400);
     int counter = 1;
+//if(dump)System.err.println("\nIn skip; cursor,endapp: "+cursor+" "+endapp);
     while( counter>0 && cursor<endapp ) {
         char c = pr.charAt(cursor);
         if(c==l)++counter;
         if(c==r)--counter;
+//if(dump)System.err.println("ST~156: "+cursor+": "+c);
         ++cursor;
     };
     if( counter>0 )return counter;
@@ -182,14 +185,15 @@ public static boolean decl() {
  *      Parses one variable. Makes allocation and symbol entry.
  */
 public static void varAlloc(Stuff.Type type, Stuff vpassed) {
-	int dtod, alen=1;
+	boolean isArray=false; 
+	int alen=1;
         if( !Expr.symName() ) {             /*defines fname,lname. True is match.*/
                 eset(SYMERR);
                 return;
         }
         cursor=lname+1;
         if( lit("(") ){
-                dtod = 1;   /* distance to data (was vclass) */
+                isArray = true;   /* distance to data (was vclass) */
                 int fn=fname; /* localize globals that asgn() may change */
                 int ln=lname;
                 if( Expr.asgn() ) alen=Stack.toptoi()+1;  /* dimension */
@@ -198,9 +202,9 @@ public static void varAlloc(Stuff.Type type, Stuff vpassed) {
                 int x = PT.mustFind(cursor,cursor+5,')',RPARERR);
                 if(x>0)cursor = x+1;
         } else {
-                dtod = 0;
+                isArray = false;
                 alen = 1;
         }
-        Var.newvar(dtod, type, alen, vpassed);
+        new Var(isArray, type, alen, vpassed);
 }
 }

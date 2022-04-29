@@ -13,6 +13,10 @@ public class Var extends PT {
 	static List<Map<String,Var>> locals = new LinkedList<Map<String,Var>>();
 	static Map<String,Var> curfun = null;
 
+	public String toString(){
+		return name+": "+value;
+	}
+
 /* SITUATION: Function call. Push a new vartab for the functions locals */
 	static void newfun() {
 		curfun = new HashMap<String,Var>();
@@ -86,11 +90,12 @@ public class Var extends PT {
 // dumps...
 	static void dumpMap(Map m) {
 		Set mes = m.entrySet();
+//System.err.println("Var~89:  map size: "+m.size());
 		Iterator sit = mes.iterator();
 		while(sit.hasNext()) { 
-			System.out.print(sit.next()+" "); 
+			System.err.print(sit.next()+" "); 
 		}
-		System.out.println();
+		System.err.println();
 	}
 	static void dumpVarTab(){
 		Map lmap;
@@ -102,11 +107,17 @@ public class Var extends PT {
 	}
 /*	Checks for balanced brackets, cursor to stop. */
 	static int checkBrackets(int stop) {
+//System.err.println("IN checkBrackets, cursor,stop: "+cursor+" "+stop);
+//boolean dump = (cursor>=5400);
 			int err;
 			int save=endapp;  /* _skip uses endapp as limit */
 			endapp=stop;
 			while(cursor<stop) {
-					while(pr.charAt(++cursor) != '[' && cursor<stop) ;
+//if(dump)System.err.print(""+pr.charAt(cursor));
+//if(dump)System.err.println("==>"+pr.substring(cursor-9,cursor+2)+"<==");
+					while(pr.charAt(cursor++) != '[' && cursor<stop) ;
+//if(dump)
+//System.err.println("Var~114, cursor,pr[cursor]: "+cursor+" "+pr.charAt(cursor));
 					if(cursor<stop) {
 						err=ST.skip('[',']');
 						if( err != 0 )return err;
@@ -119,20 +130,29 @@ public class Var extends PT {
 public static void tclink() {
         int x;
         int savedCursor=cursor;
-/* check Brackets from cursor to limit */
         cursor=0;
         if(checkBrackets(lpr)!=0)eset(RBRCERR+1000);
-        if(checkBrackets(apr)!=0)eset(RBRCERR+2000);
-        if(checkBrackets(endapp)!=0)eset(RBRCERR+3000);
-        if(error!=0)Dialog.whatHappened();
+		if(checkBrackets(apr)!=0)eset(RBRCERR+2000);
+		if(checkBrackets(EPR-1)!=0)eset(RBRCERR+3000);
+		if(error!=0)Dialog.whatHappened();
         cursor=lpr;
         curfun = libs;
+//System.err.println("Var~139 cursor,endapp,EPR,error"+" "
+//						+cursor+" "+endapp+" "+EPR+" "+error);
         while(cursor<endapp && error==0){
+//System.err.print("    141: "+cursor);
                 int lastcur = cursor;
                 rem();
-                if(lit(xlb)) ST.skip('[',']');
-                else if(ST.decl()) ;
+//System.err.println("    143: "+cursor);
+                if(lit(xlb)){
+//System.err.println("Var~144 bracket");
+                	ST.skip('[',']');
+                }
+                else if(ST.decl()) {
+//System.err.println("Var~152 decl");
+                }
                 else if(lit(xendlib)){
+//System.err.println("Var~155 endlib");
                         if(curfun==libs) {   /* 1st endlib, assume globals follow */
                                 curfun = globals;
                         }
@@ -141,23 +161,30 @@ public static void tclink() {
                         }
                 }
                 else if(symName()) {     /* fctn decl */
+//System.err.println("Var~164 symbol");
                         cursor = lname+1;   // Parse args and body later
                         Stuff kursor = new Pval(lname);
                         new Var(false, Stuff.Type.FCN, 1, kursor); // ~65: self installed
                         int xxx = mustFind(cursor, endapp, '[',LBRCERR);
+//System.err.println("    Var~169 xxx");
                         if(xxx>0) { 
-                        	cursor=xxx+1; 
-                        	if(ST.skip('[',']')==0)eset(RBRCERR);
+                        	cursor=xxx+1;    // just past the found [
+                        	if(ST.skip('[',']')!=0)eset(RBRCERR);
+//System.err.println("    Var~173 cursor: "+cursor);
+//System.err.println("    Var~174 pr+cursor...: "+pr.substring(cursor,cursor+99));
                         }
                 }
                 else if(pr.charAt(cursor)=='#'){
+//System.err.println("Var~175 #");
                 		char s;
                         while(++cursor<endapp) {
 							char c = pr.charAt(cursor);
 							if( (c==0x0d)||(c=='\n') )break;
                         }
                 }
+//System.err.println("Var~185 cursor,lastcur: "+cursor+" "+lastcur);
                 if(cursor==lastcur)eset(LINKERR);
+//System.err.println("Var~187 error: "+error);
         }
         cursor = savedCursor;
 }

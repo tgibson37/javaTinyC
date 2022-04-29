@@ -69,6 +69,7 @@ public static void whatHappened() {
         else if(error!=0){
                 int fc, lc;
                 int firstSignif=0, blanks, lineno;
+System.err.println("Dialog~72: errat,EPR = "+errat+" "+EPR);
                 char e = pr.charAt(errat);
                 if(e==0x0a||e==0x0d)--errat;
                 if(errat<lpr){
@@ -86,19 +87,21 @@ public static void whatHappened() {
                         System.out.print("\napp ");
                 }
                 System.out.print("line "+lineno+" (cursor pr["+errat+"])");
-                errToWords();
-                fc=fchar(errat);
-                while(fc+firstSignif < EPR){
-                	char c = pr.charAt(fc+firstSignif);
-                	if(c==' ' || c=='\t') ++firstSignif;
-                }
-                lc=lchar(errat);
-                pft(fc,lc);
-                System.out.println("");
-                pft(fc,fc+firstSignif-1);        /* leading whitespace */
-                blanks=errat-fc-firstSignif-1;   /* blanks to carot */
-                while(--blanks >= 0) System.out.print(" ");
-                System.out.println("^");
+//
+//                errToWords();
+//                fc=fchar(errat);
+//                while(fc+firstSignif < EPR){
+//                	char c = pr.charAt(fc+firstSignif);
+//                	if(c==' ' || c=='\t') ++firstSignif;
+//                }
+//                lc=lchar(errat);
+//                pft(fc,lc);
+//                System.out.println("");
+//                pft(fc,fc+firstSignif-1);        /* leading whitespace */
+//                blanks=errat-fc-firstSignif-1;   /* blanks to carot */
+//                while(--blanks >= 0) System.out.print(" ");
+//                System.out.println("^");
+
         }
         else {
                 if(!quiet)System.out.println("\ndone");

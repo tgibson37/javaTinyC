@@ -123,27 +123,32 @@ static boolean symName() {
 	tolerates 0x0d's, and implements // as well as old slash-star comments.
  */
 	static void rem() {
-		int c;
+//System.err.println("PT~126");
+//boolean dump = cursor<99;
+		char c;
 		while(cursor<endapp-2) {
 			c = pr.charAt(cursor);
 			// skip whitespace 
 			while( cursor<endapp-2 &&           
 						( c==' ' || c==0x09 || c==0x0a || c==0x0d )  ) {
 				c = pr.charAt(++cursor);
+//System.err.println("\n\n~134");
 			}
 			// if not comment flag it must be code
 			if( !( lit(xcmnt)||lit(xcmnt2) ) ) {
-//System.err.println("Expr~129 cursor: "+cursor);
+//System.err.println("\n\n~138");
 				return;
 			}
 			// eat text to beginning of next line
 			while(cursor<endapp-1) {
 				c = pr.charAt(cursor);
-				if( c!=0x0a || c!=0x0d ) ++cursor;
+//System.err.print(""+c);
+				if( c!=0x0a && c!=0x0d ) ++cursor;
 				else break;
 			}
 			// repeat the above for more comments
 		}
+//System.err.println(" ~150");
 		return;
 	}
 
