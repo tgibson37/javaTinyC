@@ -40,7 +40,8 @@ abstract public class Stuff extends TJ {
 	}
 	public boolean isFcn(){
 		char t = getType();
-		return t=='F';
+//System.err.println("Stuff~42, isFcn: " + t + (t=='P') );
+		return t=='P';
 	}
 	static Ival createIval(int i){ return new Ival(i); }
 	static Cval createCval(char c){ return new Cval(c); }
@@ -48,6 +49,7 @@ abstract public class Stuff extends TJ {
 
 	// tests...
 	public static void main(String[] args){
+		System.out.println("running Stuff.main");
 		Stuff vi = new Ival(7);
 		Stuff vc = new Cval('Q');
 		Stuff vs = new Sval("foo-bar");

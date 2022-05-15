@@ -832,10 +832,330 @@ Thur, Apr 28
 Dumps in TC,Var show only 
 	ONE symbol hit (Var~156)
 	One entry in libs, none in globals  [dumping map.size()]
-		dump of the one needs work
+		dump of the one needs work      <<<===  Var~
 	SHOULD have all libs, and two globals: foo, main
 x		BUT foo needs a main.
 	WHY is the loop not looping ???
+---------------------
+
+Fri, Apr 29
+getproperty is 1st lib sym and ONLY in lib map. 
+x	Cursor must run to end of pr before 2nd pass of while: Var~142
+2 bugs found/fixed today (8am)...
+	ran TC.main:    ./r TC foo.tc
+	dumped libs and globals maps. Being hashfiles the dumps have random order.
+		But the content is proper
+	Uncovered TC~62: ST.st(), it did nothing. Probably missing code. SO...
+Goal: Actually execute the seed, main, and foo.
+	Need to read ST.st(): ST~15. 
+x	Need to tidy Var, etc.
+	Getting LINKERR running ./r TC foo.tc
+		Parses seed's '[', in xlb loop ST~30 cursor is 1:  --> "main();]" 
+		Linking is history. Should enter st() again, tunnel down to factor and
+			symbol, look up 'main', and do enter().
+Study the code starting at ST~30...
+STATUS: error is set in tclink. TC~45,49 bracket the call
+	printing error: 0 then 20.
+	Code goes on running: ST~'s   15  20  28,29  30,31,32
+		in st() -------------------^   ^   ^  ^   ^  ^  ^
+		before rem() ------------------J   |  |   |  |  |
+		xlb match -------------------------+--J   |  |  |
+			xlb for loop -------------------------+--+--J
+---------------------
+
+Sat, Apr 30
+Most likely I need to set endapp just past the last ] instead of == EPR. It 
+should never start that last loop.
+	Didn't work. tclink works but ALWAYs sets LINKERR, probably in last pass.
+	cursor points to final ] on last pass. cursor needs to be bumped PAST the
+	the last matched ], but where ???
+		skip works fine until end. 
+		foo.tc has a \n at end.
+		tclink's last call to skip was the match of global 'main'
+Try jdb SS from the match of main...
+	$ jdb tg37.tinyc.TC foo.tc
+	> stop at Var:148      <<--  deferred, ~148 is match of endlibrary
+	> run                  <<--  ran to end, no hit on 148
+Also: cont for continue, stop in Class.methodSignature
+---------------------
+
+Mon, May 2
+Suspicion: skip block is stopping one short, ST~164, calls from ST and Var.
+	TRUE, auditing all calls...
+	ST~142	skipst, compound case, followed by rem call 
+	 148	skipst, if/while case, optional ()'s around the args.
+	 167	defn
+	VAR~114	checkBrackets, cursor at end is irrelevant
+	 144	tclink skip fcn body case, bump here may be best fix
+	 164	tclink symname case, skip fcn body
+Philosophical question: am I cloning code as done in priors, or am I tidying
+	awkwardly done stuff like skipst ??? It would be better if it moved the
+	cursor just beyond the matching 'char r.'
+	AND this worked once in prior C version, and 8080. How do these these 3 impls
+		line up ???
+	Thought: get it to work as is for now, then consider doing a total 'tidy
+		audit' and overhaul...   vs    I'm into this issue now, get it right:
+		working AND tidy. I THINK THE LATTER IS BEST. ~884 audit above is a good
+		starting place. How should each end up ???
+	ST~167: cursor should be JUST beyond matching r.
+	Others: conform to new defn.
+		ST~142	OK as is
+		148		study:	looks iffy even as is
+		Var~114	OK as is
+		144		study:	OK as is
+		164		study:	IMPROVED, this is the bug
+8080 skipst, App A ~282C.
+	rem(), lit [, skip [], skip if-else nested.  BUT NOT while ??? 
+	My guess is it was coded to served only where needed. All calls to skipSt
+	are from ST, ~'s 56, 60, 85, 95, 149, 151     java version.
+		from tc.c    691, 693, 787, 791, 815, 825
+x	6 total uses. DECISIONS: BUMP the cursor PAST the matching r. Fix later
+x		if anything breaks.
+---------------------
+
+Tue, May 3
+THOUGHT: should eset call whathappened and exit ???
+Yesterday added the bump at ST~177, today compiled, 
+	run crashed: Stack~96. error stayed 0. So above fixed and have new issue.
+x	Lots of output. Removing err prints in Var~135..141, TC~49. 
+x	Goal is clean run to the new issue.
+Issue: debugging st. Stack to crash point...
+	at tg37.tinyc.StackImpl.pop(Stack.java:96)
+	at tg37.tinyc.Stack.popst(Stack.java:18)
+	at tg37.tinyc.Stack.toptoi(Stack.java:33)
+	at tg37.tinyc.ST.st(ST.java:115)	in st, after Expr.asgn()
+	at tg37.tinyc.ST.st(ST.java:32)		in xlb loop, calls st()
+	at tg37.tinyc.TC.main(TC.java:53)	calls st()
+		cursor is 1
+		probably Expr.asgn pushed nothing. 
+			Should have matched 'main' and looked up and entered.
+Exactly what path ???
+x	Plant a print deep to see if it is first hit...
+x	st~32, xlp loop calling st()
+		cursor -> main();]
+		SO: st got into seed's [], is trying to process 'main'
+---------------------
+
+Wed, May 4
+PLAN: use jdb, bkpt ST.st:34 (just before loop's st call), then single step...
+	What should happen: 
+		st down to Expr.asgn to factor, to symbol, match 'main,' addrval,
+		is an 'E', enter.
+GOAL: where did it go off the track ???
+---------------------
+
+Thur, May 5
+Did it get to factor? Have I javanized all of Expr?   <<==  probably, and NO.
+	factor can do only constants, symName is covered.
+Var usage... 
+	Var v = addrval(fname,lname); // searches locals,globals,libs
+	Stuff s = v.value();  // returns Xval, X= I, C, S, F.
+		both uses are tested in Var.main.
+Expr...
+	test cases use only constants, 
+	no code for Var details, BUT  
+Stuff...
+	boolean isNum(),isInt(),isChar(),isStr(),isFcn()
+	abstract getInt() 
+		eset(TYPEERR) for Sval, returns -999999.
+		kursor for Pval and Fvar.
+Var has value, and it is public, so no getter/setter.
+	E.g: Var~200.
+---
+I need to document the API for each main class, with summary paragraphs.
+x	api.txt
+---------------------
+
+Fri, May 6
+STATUS: ./r TC foo.tc crashes, peekTop. 
+	Its running fresh code, never run before.
+		ST~32, xlb loop calling st, cursor->main();]
+		factor~165
+	So it got that far at least. Need to study code from there to crash point.
+		Stack~103
+Its tunnelling out of asgn stack, and expr~84 expects a value returned from 
+below. The cursor points to 'main' (in the seed). That should have been entered.
+So what happened in factor: expr~165 ???
+---
+added 'dump' script to tc source, tab 2 of cmd window.
+	FROM THAT tab ./dump compares times of src vs classes.
+---     back to ~978 above...
+factor should have parsed main, looked it up, entered. Reading the code...
+	expr~165: 
+That code is fresh C, not java-ized yet.
+	Stuff:	public boolean isArray;    // used to be int class
+		tons of hits via ./gj
+		note isArray is public, no get/set.
+			All the classes are really just public structs with code.
+			Stuff and Var are the only objects. 
+typeToSize, tc.c~45, computes byte size for storage purpose.
+	BUT Stuff holds the value. Does that include the whole array?
+		It must. No other place to put it this java design.
+		So accessing an element must be handled by Stuff, not client code.
+		Have not yet parsed an array, so Hmm.
+PLAN: do arrays later. Get foo to call pl, and pl to do its thing.
+x	Expr~7: enter(int where)...    <<== stub
+ASSUME: typeToSize is obsolete.
+STATUS: stub enter sets cursor and calls st(), nothing more.
+x	The seed does call main, and foo is parsed but not its arg yet.
+x	The cursor -> char b(0     <-- the arg to ps
+Goals: 
+	full enter incl MC call, 
+	then new file MC.java with ps.
+Stack.java has implied nxtstack: StackImpl.list.size()
+C version enter manipulates nxtstack building the args.
+	varargs complicates things. Maybe skip for now ???    YES
+---------------------
+
+Sat, May 7
+Abandon enhancements to Expr.main, too messy.
+Restored Expr.main to original test code, all 3 pr OK now.
+Status: working on full enter, ~1003 above.
+Test run:   .r TC foo.tc
+	loadCode, tclink, st
+Changes to Stack are getting messy. Stack has static methods. StackImpl is
+new'd up at ~10. Expr.enter needs to get size of StackImpl.list which IS the 
+stack. ~92 error complains about non-static variable list. Stack should offer
+a static size(), StackImpl should be hidden, private to Stack.
+	./r Stack runs OK, will need size test case added.
+Goal: Stack.size() method, Then use it in Expr.enter().
+ISSUE: jc complains Stack~91: static flaw...
+	static List cannot hold non-static Stuff  ???
+---------------------
+
+Sun, May 8
+I'm thinking it is time to make my container classes be singletons instead
+of all those static methods. Also TJ error codes should be final. Issue is when
+to do it, now or after enter() is finished. I think maybe now. But I need
+closure on changes so far, specically good compiles. Do that easily by
+covering not fixing erroneous code.
+x	Stack ~91
+x	Expr ~11,36,37
+x	Full compile, (12 seconds)
+https://www.journaldev.com/1377/java-singleton-design-pattern-best-practices-examples
+PLAN: Make these files self instantiated singletons.
+		Use above ref method 4: Thread safe. Same as my old usage except the
+			synchronized attribute on getInstance(). 
+x	Stack
+	Expr
+	ST
+	PT
+	do getInstance() calls with local refs where needed. E.g...
+		Dialog di = Dialog.getInstance();
+		PT pt = PT.getInstance();
+		di.errToWords()   instead of   Dialog.errToWords()
+		pt.xif            instead of   PT.xif
+	find all refs to calls and use above technique
+	AND change names of the two letter classes, e.g. 
+		ParseTools.java instead of PT.java...
+			ParseTools pt = ParseTools.instance();
+---------------------
+
+Mon, May 9
+Moving from static to singleton, ~1039 above
+	Stack done, Expr next.
+---------------------
+
+Tue, May 10
+First mentions of each src...
+	Feb 7:  git     "5 source files"
+	Feb 11: git     "PT compiles"
+	Mar 30: git     "Expr parses constants,     Stuff and Stack stabilized"
+	Apr 2:  git     "Var compiles"
+		notes...
+	Jan 25: Stuff   notes~119
+	Jan 26: PT          193
+	Feb 6:  TJ          254
+	Feb 7:  Stack       259
+	Feb 8:  tools: setClassPath,jc,clean,r,gc,gj
+	Feb 11: Expr        366 (just Konst)
+	Mar 24: SVal,etc    398, subclasses extend Stuff
+	Apr 2:  Var         589
+Test mains...
+	Stuff
+	PT
+	Stack
+	TC	 (loadCode, overall test main)
+	Expr (relations)
+	Var  (tc.link, newfun, etc.)
+---------------------
+
+Thur, May 12
+More study/doc: role of each source
+		Unit test mains: Expr,PT,Stack,Stuff
+	Stuff	data
+				base for Sval,Cval,Ival,Pval,Fvar
+	PT		parse tools
+				base for Dialog,Expr,ST,Var
+	TJ		variables, constants, eset()
+				base for PT,Stack
+	ST		statement parser (st)
+	TC		loader, system test main
+	Dialog	dialog
+	Stack	stack
+	Expr	expression
+	Var		variables, their container, tclink
+Goal: Singletons for...
+	ST
+	TC
+	Dialog
+x	Stack
+	Expr
+Conversion steps: doing Expr
+	4	Change calls everywhere from class to instance
+			use compiler or ./GJ to find them
+			use getInstance for handle
+	5	run all tests
+---
+	Expr calls are all in ST.
+	Doing step 4 first.
+Steps: doing Expr...
+x	1	find client calls and cnange to instance calls
+x			(ST: ~4, and replace Expr->ex)
+x	2	Expr.getInstance() code   (see Stack~9..15)
+x	3	getInstance call in Expr.main   (Stack~79)
+x	4	remove static on fcn/data definitions
+	5	run unit test
+---
+Var cannot be a singleton. Maybe split it in two:
+	the container Vartab, a singleton
+	the variable Var
+AND meaningful rename the singletons: ST PT TJ TC
+---------------------
+
+Fri, May 13
+Divided Var.java into Vartab and Var source files.
+Var~74, curfun = ..., is a mystery. What did this line of code do?
+---------------------
+
+Sat, May 14
+covered the mystery code line, compiling all...
+Compile all line added to ./jc. Works fine. 
+	tab 2 dump: ls -l both src and cls: ALL COMPILES Ok, 7:40am.
+Goal: run ALL tests. mains:
+	Expr
+	Stack
+	Stuff
+	TC foo.tc
+	Var
+runall:  script to run above mains
+	opens with clear and echo "===..==" as start marker
+	and separates each call with echo "---..--^^<classname>"
+Goal: "running xxx" at start of each test main.
+x	HAVE: Expr,Stack
+x	NEED: Stuff,TC,Var
+Goal: uncover TC~56 call to stmt.st()
+	What it does: load code(arg), link, dump vartab, cursor=0 (->seed), st()
+	short: try to run a tc program (foo.tc ~1139 above)
+	./r TC foo.tc   GOOD up to st call. 
+		TC~49 print shows error 0
+		BUT no further output. 
+Goal: trace the st call.
+	The link vardump is good.
+	Expr has 3 ~ dumps: 226..238 (factor,factor,isFcn)
+	enter() is empty stub w/ nearby covered tc code.
+Goal: get enter working
+STATUS: Only ABOVE code is copied, and is still tc, not java.
 
 
 
@@ -845,12 +1165,7 @@ x		BUT foo needs a main.
 
 
 
-	
-	
-	
-	
-	
-	
+
 
 
 

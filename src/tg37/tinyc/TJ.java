@@ -8,7 +8,7 @@ public class TJ {
 	}
 //sizes
 //static int STACKSIZE =    100;
-static int PRSIZE    =  10000;
+//static int PRSIZE    =  10000;
 
 /* Global data */
 static String pr;

@@ -123,8 +123,6 @@ static boolean symName() {
 	tolerates 0x0d's, and implements // as well as old slash-star comments.
  */
 	static void rem() {
-//System.err.println("PT~126");
-//boolean dump = cursor<99;
 		char c;
 		while(cursor<endapp-2) {
 			c = pr.charAt(cursor);
@@ -132,29 +130,26 @@ static boolean symName() {
 			while( cursor<endapp-2 &&           
 						( c==' ' || c==0x09 || c==0x0a || c==0x0d )  ) {
 				c = pr.charAt(++cursor);
-//System.err.println("\n\n~134");
 			}
 			// if not comment flag it must be code
 			if( !( lit(xcmnt)||lit(xcmnt2) ) ) {
-//System.err.println("\n\n~138");
 				return;
 			}
 			// eat text to beginning of next line
 			while(cursor<endapp-1) {
 				c = pr.charAt(cursor);
-//System.err.print(""+c);
 				if( c!=0x0a && c!=0x0d ) ++cursor;
 				else break;
 			}
 			// repeat the above for more comments
 		}
-//System.err.println(" ~150");
 		return;
 	}
-
+/*
 	public static void main(String args[]) {
 pr="   foo   ";
 		symName();
 		System.out.println("PT~154 first,last = "+fname+", "+lname);
 	}
+ */
 }

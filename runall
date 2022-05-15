@@ -1,0 +1,12 @@
+clear
+echo "===================="
+java tg37.tinyc.Expr
+echo "--------------^^ Expr"
+java tg37.tinyc.Stack
+echo "--------------^^ Stack"
+java tg37.tinyc.Stuff
+echo "--------------^^ Stuff"
+java tg37.tinyc.TC foo.tc
+echo "--------------^^ TC foo.tc"
+java tg37.tinyc.Var
+echo "--------------^^ Var"

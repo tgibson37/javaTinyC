@@ -6,20 +6,28 @@ package tg37.tinyc;
 import java.util.*;
 
 public class Stack extends TJ {
-//	public static StackImpl<Stuff> stack = new StackImpl<Stuff>();
-	static StackImpl<Stuff> stack = new StackImpl<Stuff>();
+// Singleton
+	private static Stack instance;
+	private Stack(){}
+	public static synchronized Stack getInstance(){
+		if(instance==null)instance=new Stack();
+		return instance;
+	}
+
+//	public StackImpl<Stuff> stack = new StackImpl<Stuff>();
+	StackImpl<Stuff> stack = new StackImpl<Stuff>();
 
 	/* basic pusher */
-	public static void pushst(Stuff stuff) {
+	public void pushst(Stuff stuff) {
 		stack.push(stuff);
 	}
 	/* basic popper, entry stays accessible until pushed over */
-	public static Stuff popst() {
+	public Stuff popst() {
 		return stack.pop();
 	}
-	public static Stuff peekTop() { return stack.peekTop(); }
+	public Stuff peekTop() { return stack.peekTop(); }
 	/* used by Expr.reln() for relational ops (<=, etc) */
-	public static int topdiff() {
+	public int topdiff() {
 		int b = toptoi();
 		int a = toptoi();
 		return ( a-b );
@@ -27,7 +35,7 @@ public class Stack extends TJ {
 /* pop the stack returning its int value. dtod is distance to datum, 0 or 1.
 	It used to be called class.
  */
-	public static int toptoi() {
+	public int toptoi() {
         int datum=9999999;
         Stuff stf;
         Stuff top = popst();
@@ -49,28 +57,29 @@ public class Stack extends TJ {
     }
 
 /* push an int */
-	public static void pushk(int datum) {
+	public void pushk(int datum) {
 			pushst( new Ival(datum) );
 	}
 
 /* push an int as a class 1 */
-	public static void pushPtr(int datum) {
+	public void pushPtr(int datum) {
 			pushst( new Pval(datum) );
 	}
 
 /* these two used by RELN */
-	public static void pushone() {
+	public void pushone() {
 			pushk(1);
 	}
-	public static void pushzero() {
+	public void pushzero() {
 			pushk(0);
 	}
 
 // tests...
-	static void kase(Stuff s, String sb) {
-		Stack.pushst(s);
+	private static void kase(Stuff s, String sb) {
+		Stack stk = Stack.getInstance();
+		stk.pushst(s);
 		System.out.print("Should be:"+sb);
-		int x = Stack.toptoi();
+		int x = stk.toptoi();
 		System.out.println(": "+x);
 	}
 	public static void main(String[] args){
@@ -89,9 +98,10 @@ public class Stack extends TJ {
  */
 class StackImpl<Stuff> {
     private List<Stuff> list = new ArrayList<Stuff>();
-    public long size() { return this.list.size(); }
+    public int size() { return list.size(); }
     void push(Stuff value) { list.add(value); }
     Stuff pop() {
+//System.err.println("\n\nStack~95, cursor: "+TJ.cursor);
         if (this.list.isEmpty()) { PT.eset(TJ.POPERR); }
         Stuff value = this.list.get(this.list.size() - 1);
         this.list.remove(this.list.size() - 1);
