@@ -1156,6 +1156,276 @@ Goal: trace the st call.
 	enter() is empty stub w/ nearby covered tc code.
 Goal: get enter working
 STATUS: Only ABOVE code is copied, and is still tc, not java.
+STATUS: forgot to commit yesterday. Need to role back a bit...
+x	Enter body covered
+x	st call covered
+x	./runall is good
+x	commit
+	redo as singleton: (remove statics)
+		Dialog
+		PT
+Why StackImpl ??? Options...
+	merge into Stack
+	StackImpl private and..
+		Stack calls StackImpl methods
+	Keep StackImpl statics for now & fix later ???
+	
+Continuing work on enter ABOVE...	
+	Compiles, MC call is covered for now...
+	./r TC foo.tc    <<== test run
+		call to peektop crashes...
+	at tg37.tinyc.StackImpl.peekTop(Stack.java:114)
+	at tg37.tinyc.Stack.peekTop(Stack.java:28)
+	at tg37.tinyc.Expr.expr(Expr.java:140)
+	at tg37.tinyc.Expr.reln(Expr.java:84)
+	at tg37.tinyc.Expr.asgn(Expr.java:67)
+	at tg37.tinyc.ST.st(ST.java:126)
+	at tg37.tinyc.ST.st(ST.java:45)
+	at tg37.tinyc.TC.main(TC.java:56)
+			Expr~19: enter(5530)
+			 ->  [ foo ]
+main is parsed, and trying to enter the body.
+	WHY peekTop ???
+	Turning on trace: Expr~6
+Enter above w/out args seems OK
+Goal: full enter w/o args, then w/ args.
+-------
+Downloaded prettifier: astyle into ~/Downloads.
+	Needs a C++ build. Will it work.
+	Installed -->>  ~/Projects/astyle
+		Doc:  -->>  ~/Projects/astyle.txt
+	Defaults: in Doc
+	Options: Doc~398 (following huge choices above ~398)
+	Command Line: Doc~447
+	std redirection, or Doc~482
+TEST RUN: cp src -> bak	   ===>>>   src/tg37/tinyc$ cp -a *.java ../bak_15May22
+	then from top (~Projects/Java/tiny-c)   ===>>>  tree src
+		shows all of tinyc and java files in bak_15May22
+NOW experiment with astyle using the main src files, and see if the compile/run
+	astyle *.java, but need path info in the args
+		astyle renames each java with .orig, then pretties them back into .java.
+		So I can go into tab 2 and just do astyle *.java there
+	BUILT ln -s ../../../../../astyle   IN  src/tg37/tinyc (tab 2).
+		IT WORKS! Have 10 orig and 10 java files.
+Goal: study the new java files and decide.
+	NEED side-by-side panels in cmd to see details orig vs java.   KEEPER
+-----
+x	USING astyle...   From tab 2 ==>>    $ ./astyle *.java
+x	The only fixup: find all System.err calls and out-dent them to the margin.
+The code is more readable. Using all astyle defaults.
+-----
+Goal ~1194 above: finish enter, BELOW....
+x	enter BELOW
+x		C code copied
+x		compiles
+	runs
+		seed calls main
+		main calls foo
+	args
+		code
+		compiles
+	runs,
+		foo calls pl
+	MC
+		code
+		compiles
+		pl prints a string
+==================    debugging, in a loop...stack overflow
+	at tg37.tinyc.ST.<init>(ST.java:4)
+	at tg37.tinyc.ST.getInstance(ST.java:11)
+	at tg37.tinyc.Vartab.<init>(Vartab.java:8)
+	at tg37.tinyc.Vartab.getInstance(Vartab.java:19)
+	at tg37.tinyc.Expr.<init>(Expr.java:15)
+	at tg37.tinyc.Expr.getInstance(Expr.java:11)
+		repeats
+Maybe I need to put actual initialazion of instance, and
+maybe othere stuff into the empty private constructors.
+---------------------
+
+Mon, May 16
+solving getInstance infinite loop.
+new question: my inheritance should be composition ???
+	What would the new diagram be ???
+	PT is the issue. It has 5 subclasses. 
+		AND this is where the loop is !!!
+		Var has many objects, but Vartab organizes them.
+		So PT should be composition of...
+			Vartab, ST, Expr, Dialog
+		AND TC composition of TJ, PT, Stack
+		TC should be the top, not TJ, composition of TJ, PT
+TC.main: create all components with local handles passing
+them the ones they need. Use constructors, not getInstance. 
+	Expr,Stack,Statement,Vartab,Parsetools,Dialog
+	ex   st     stmt      vt      pt         dlg
+git diff is huge due to running astyle on the code.
+git log "singletons instead of statics"
+---
+GOAL: composition instead of singletons
+STATUS: astyle version is current, has compile issues
+	differs from committed version which is pre-astyle.
+PLAN: work with existing astyle version. 
+	TJ is only base class, eset and all globals.
+	TC instantiates all the singletons into TJ.
+		Use new, not instance.
+		Names: expr,stk,stmt,vt
+	Get that much to work, and commit.
+---
+Expr (and some others) compile. Tab 2 ./dump shows progress.
+	tc~49 instantiates the components.
+All changes made, all compile. 
+STATUS (5/16,7pm): reaches Expr~111, "execute fcn's body"
+	It passed through ~40, haveArgs==true, 
+	but BELOW is covered C code for parsing args.
+---------------------
+
+Tue, May 17
+Composition tidy not done yet. 
+	Lots of calls to statics.
+	All error codes should be moved into TJ.
+	TJ,PT,TC,ST need full class names.
+	Client calls to their fcns go via obj name
+		Constructors need to capture obj names
+			NEED args.
+Plan: stick to current goal, fix above incrementally as side goal.
+	POPERR, Stack~127. 
+BAD FEELING I am breaking more than fixing. 
+	Roll back ???
+git diff: Last commit was pre-astyle
+	I can apply astyle easily enough. ISSUE is I cannot readaly see differences
+	in code. But I have bak. May 15 and 16.
+new script df does 2 diffs on <arg>
+	15 vs 16 have diffs, 16 vs current IDENTICAL
+So reverting to 15 may be progress, but first study the diffs. 
+	Also above ~1131, May 14. 
+------
+	15 < has singletons. 16 > has singletons. 
+latest edit:    Expr.java~ vs Expr.java 
+	singleton code removed
+	_setArg C code added
+	getInstance calls removed (stk,vt,stmt)
+
+	TWIDDLE ~ diffs...
+ls *.java~ *.java -lt
+-rw-rw-r-- 1 tom tom  3948 May 17 09:15 Stack.java
+-rw-rw-r-- 1 tom tom  2126 May 17 09:07 TJ.java
+-rw-rw-r-- 1 tom tom  2442 May 17 09:02 TJ.java~
+-rw-rw-r-- 1 tom tom 14167 May 17 08:58 Expr.java
+-rw-rw-r-- 1 tom tom  3797 May 17 08:02 Stack.java~
+-rw-rw-r-- 1 tom tom 13633 May 16 19:14 Expr.java~
+-rw-rw-r-- 1 tom tom  7129 May 16 12:51 ST.java
+-rw-rw-r-- 1 tom tom  7097 May 16 12:50 ST.java~
+-rw-rw-r-- 1 tom tom  3409 May 16 12:45 Var.java
+-rw-rw-r-- 1 tom tom  3495 May 16 12:45 Var.java~
+-rw-rw-r-- 1 tom tom  4730 May 16 12:43 Vartab.java
+-rw-rw-r-- 1 tom tom  4968 May 16 12:42 Vartab.java~
+-rw-rw-r-- 1 tom tom  1816 May 16 10:13 TC.java~
+-rw-rw-r-- 1 tom tom  1881 May 16 10:13 TC.java
+-rw-rw-r-- 1 tom tom  5651 May 15 11:33 Dialog.java
+-rw-rw-r-- 1 tom tom  5663 May 15 11:33 Dialog.java~
+-rw-rw-r-- 1 tom tom  5129 May 15 10:24 Stuff.java
+-rw-rw-r-- 1 tom tom  4986 May 15 10:24 PT.java
+-rw-rw-r-- 1 tom tom  4251 May 14 08:27 Stuff.java~
+-rw-rw-r-- 1 tom tom  4237 May  9 11:46 PT.java~
+----------
+STRANGE end line of: df PT
+189909189909189909189909189909189909189909189909 PT 189909189909189909189909189909189909189909189909189909
+	followed by the correct line (^^...^^ PT, etc.)
+	Best guess: echo dumped it.
+---
+PT diffs (df) 
+	prettyfied, that is all.
+I need to understand status of each version
+	May 15
+	May 16
+	~
+	Current
+df shows 2 diffs, 15vs16 and 16vsCurrent
+tab 2 ls -lt: .java vs .java~:  clues what I changed
+but most changes seem to be prettifing. IS ~ stuff the best ???
+Actual code changes ~ vs current (exclude print.err stuff)
+	TC		uses global vt,stmt,expr,stk
+	TJ		statics removed, one final added
+	ST		none
+	PT		none
+	Dialog	none
+	Expr	< singleton, > setArg C code  (today)
+	Stack	main fixes
+	Stuff	none
+	Var		main fixes
+	Vartab	< singleton, ST stmt decl and = ...  removed
+These are edits to <May16 except Stack,TJ <May17.
+Maybe I just role forward with compiler helping find issues.
+-------------
+PT~53, lit uses cursor in static context
+	Why is lit static ???
+	removed ALL static mods from PT.
+	Dialog~6,126: ditto
+Status: compile/edit C code using ./jc to find stuff.
+	Covering really new stuff.
+	Goal is to get a good run of yesterday's status.
+---------------------
+
+Wed, May 18
+Uncovered BELOW. C to Java. 
+	Getting setArg~14 to work is the goal.
+	Call is at ~92, 99.
+---
+Stuff defines Type as an enum, and declares public Type type for each instance.
+Expr.setArg(Type type, ...) uses Type as a class name.
+	C VERSION...
+Type is an enum in tc.h, hence global. Used as fcn arg type: foo(Type t);
+How to do that in java ?  It needs to be a class, not an enum.
+---
+ABOVE code:
+	arg->top+1 of stack (stack size) Expr~35
+	nargs=0;  bumped for each parsed arg ~57, == args parsed
+BELOW code:
+	arg bumped for each parm parsed, ~94,101
+----------------
+More static issues...
+	ST.java:221: error: non-static method mustFind(int,int,char,int) cannot be referenced from a static context
+				int x = PT.mustFind(cursor,cursor+5,')',RPARERR);
+						  ^
+	src/tg37/tinyc/Vartab.java:43: error: non-static variable VARERR cannot be referenced from a static context
+				eset(TJ.VARERR);
+					   ^
+and more. 	
+TC.main~49... 
+		vt = new Vartab();
+        stmt = new ST();
+        exp = new Expr();
+        stk = new Stack();
+These inherit PT and TJ. 
+	vt is declared in TJ~11 as public
+	stmt in TJ~11
+	exp in TJ~8
+	stk in TJ~9
+PT.mustFind is not static. How does it acquire static-ness ???
+	The error agrees PT.mustFind is non-static.
+	The static context is ST~221, varalloc.
+---------------------
+
+Thur, May 19
+x	Cleaning out all statics except mains.
+NEED to move loadCode into an object context, so it can
+access 5 TJ non-statics: endapp,lpr,apr,pr,EPR.
+	Maybe TJ itself. Precedent is TJ.eset. 
+	Still complains: 
+		TJ.java:43: error: non-static variable endapp cannot be referenced from a static context
+        endapp = sb.length();
+        ^
+---------------------
+
+Fri, May 20
+./jc shows loadCode called from TC.main() without an object prefix.
+So it is still class code, not object. I need to put it into one of the objects:
+	vt,stmt,exp,stk,dl, OR a new one
+and call it with object prefix. None seem a natural home. So maybe the choice is
+put into the smallest, vartab. OR back in TC in its own class. That is natural.
+But a private class? It needs to be public if it ever becomes an MC. So the best
+is its own file as public class. OR back in TC.java...
+	putting loadCode back into TC
+	wrapping it into a public class
 
 
 
@@ -1171,3 +1441,12 @@ STATUS: Only ABOVE code is copied, and is still tc, not java.
 
 
 
+
+
+
+
+
+
+
+
+	./r TC foo.tc    <<== test run
