@@ -5,8 +5,13 @@
 package tg37.tinyc;
 import java.util.*;
 
-public class Stack extends TJ {
-    StackImpl<Stuff> stack = new StackImpl<Stuff>();
+public class Stack {
+	StackImpl<Stuff> stack;
+	TJ tj;
+    public void Stack(TJ tj) {
+    	this.tj = tj;
+    	stack = new StackImpl<Stuff>();
+    }
 
     /* basic pusher */
     public void pushst(Stuff stuff) {
@@ -35,7 +40,7 @@ public class Stack extends TJ {
         if( top.isArray ) {
             if(top.lvalue) {
                 if(top.isNum()) datum=top.getInt();
-                else eset(LVALERR);
+                else tj.eset(tj.LVALERR);
             }
             else datum=(int)(top.getInt());
         }
@@ -43,10 +48,10 @@ public class Stack extends TJ {
 
             if(top.lvalue) {
                 if(top.isNum()) datum  = top.getInt();
-                else eset(TYPEERR);
+                else tj.eset(tj.TYPEERR);
             }
             else {
-                eset(LVALERR);
+                tj.eset(tj.LVALERR);
             }
         return datum;
     }

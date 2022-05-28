@@ -1,7 +1,7 @@
 package tg37.tinyc;
 
-/*	Tiny-c, Java version: manifest constants, globals, loadCode() and eset().
-	Base class for other components.
+/*	Tiny-c, Java version: manifest constants, globals, and eset().
+	Accessed from other components via handle 'TJ tj' passed to constructors. 
  */
 public class TJ {
 // access to components...
@@ -10,7 +10,7 @@ public class TJ {
 	public ST stmt;
 	public Vartab vt;
 	public Dialog dl;
-//	public TC tc;
+	public PT pt;
     public enum Type {CHAR, INT, FCN, STR };
 
     public void eset(int e) {
@@ -19,7 +19,7 @@ public class TJ {
     }
 
     /* Global data */
-    String pr;
+    String prog;   // tc program text
     int lpr, apr, endapp, prused, EPR;
     /* EPR is end of program SPACE.
      *      pr starts with startSeed, then libs, then app, then values

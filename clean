@@ -1,3 +1,4 @@
+#tree class
+#echo "cleaning above"
 rm cls/tg37/tinyc/*.class
 rm errs
-

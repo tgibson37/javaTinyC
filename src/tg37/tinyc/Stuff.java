@@ -7,13 +7,15 @@ NEED: lvalue service that returns an actual value Stuff. Expr~20.
 */
 package tg37.tinyc;
 
-abstract public class Stuff extends TJ {
-    public Type type;          // CHAR, INT, FUNCTION
+abstract public class Stuff {
+    public TJ.Type type;          // CHAR, INT, FUNCTION
     public int len;            // 1 for datum, else length of array
     public boolean lvalue;
     public boolean isArray;    // used to be 'class,' 0 for datum 1 for array
 
-    Stuff(Type t, int l, boolean lv, boolean ia ) {
+	static TJ tj = null;
+    Stuff(TJ.Type t, int l, boolean lv, boolean ia ) {
+    	if(tj==null)tj=new TJ();
         type = t;
         len = l;
         lvalue = lv;
@@ -98,7 +100,7 @@ abstract public class Stuff extends TJ {
 class Sval extends Stuff {
     String val;
     Sval(String v) {
-        super(Type.CHAR,v.length(),false,false);
+        super(TJ.Type.CHAR,v.length(),false,false);
         val=v;
     }
     public String toString() {
@@ -111,18 +113,18 @@ class Sval extends Stuff {
         return new Sval(val);
     }
     public int getInt() {
-        eset(TYPEERR);
+        tj.eset(tj.TYPEERR);
         return -999999;
     }
 }
 class Cval extends Stuff {
     char val;
     Cval(char v, int len) {
-        super(Type.CHAR,len,true,false);
+        super(TJ.Type.CHAR,len,true,false);
         val=v;
     }
     Cval(int v) {
-        super(Type.CHAR, 1, true, false);
+        super(TJ.Type.CHAR, 1, true, false);
         val=(char)v;
     }
     public String toString() {
@@ -138,11 +140,11 @@ class Cval extends Stuff {
 class Ival extends Stuff {
     int val;
     Ival(int v, int len) {
-        super(Type.INT,len,true,false);
+        super(TJ.Type.INT,len,true,false);
         val=v;
     }
     Ival(int v) {
-        super(Type.INT, 1, true, false);
+        super(TJ.Type.INT, 1, true, false);
         val=v;
     }
     public String toString() {
@@ -161,7 +163,7 @@ class Ival extends Stuff {
 class Pval extends Stuff {
     int kursor;
     Pval(int v) {
-        super(Type.INT,1,true,true);
+        super(TJ.Type.INT,1,true,true);
         kursor=v;
         isArray=true;
     }
@@ -179,7 +181,7 @@ class Pval extends Stuff {
 class Fvar extends Stuff {
     int kursor;
     Fvar(int cursor) {
-        super(Type.FCN,0,false,false);
+        super(TJ.Type.FCN,0,false,false);
         kursor=cursor;
     }
     String getStr() {

@@ -1,11 +1,16 @@
 /*	Parse tools: boolean lit, boolean symNameIs, int find, int mustFind,
- *	int findEOS, void rem. Returned ints are indexes into pr. Only lit and rem
+ *	int findEOS, void rem. Returned ints are indexes into prog. Only lit and rem
  *	bump the cursor.
  */
 
 package tg37.tinyc;
 
-public class PT extends TJ {
+public class PT {
+	TJ tj;
+    public PT(TJ tj) {
+    	this.tj = tj;
+    }
+    public PT() {}
 
     /************** literals **************/
     final String xif = "if";
@@ -50,17 +55,17 @@ public class PT extends TJ {
      */
     boolean lit(String s) {
         int first,last;
-        first=last=cursor;
-        int stop = endapp-s.length();
+        first = last = tj.cursor;
+        int stop = tj.endapp-s.length();
         while(first < stop) {
-            char c = pr.charAt(first);
+            char c = tj.prog.charAt(first);
             if( c == ' ' || c == '\t' ) ++first;
             else break;
         }
-        cursor = first;
+        tj.cursor = first;
         last = first+s.length();
-        if( last<endapp && s.equals(pr.substring(first,last)) ) {
-            cursor += s.length();
+        if( last<tj.endapp && s.equals(tj.prog.substring(first,last)) ) {
+            tj.cursor += s.length();
             return true;
         }
         return false;
@@ -70,12 +75,12 @@ public class PT extends TJ {
      */
     boolean symName() {
         int temp;
-        char c = pr.charAt(cursor);
-        while( c == ' ' || c == '\t' ) c = pr.charAt(++cursor);
-        temp=cursor;
+        char c = tj.prog.charAt(tj.cursor);
+        while( c == ' ' || c == '\t' ) c = tj.prog.charAt(++tj.cursor);
+        temp=tj.cursor;
         if( Character.isLetter(c) || c=='_') fname = temp;
         else return false;
-        while( Character.isLetterOrDigit(c=pr.charAt(++temp)) || c=='_') ;
+        while( Character.isLetterOrDigit(c=tj.prog.charAt(++temp)) || c=='_') ;
         lname = temp;
         return true;  /* good, fname and lname defined */
     }
@@ -83,7 +88,7 @@ public class PT extends TJ {
     /*	return true if symname matches arg, no state change
      */
     boolean symNameIs(String name) {
-        String tok = pr.substring(fname, lname);
+        String tok = tj.prog.substring(tj.fname, tj.lname);
         return tok.equals(name);
     }
 
@@ -92,9 +97,9 @@ public class PT extends TJ {
      */
     int find( int from, int upto, char c) {
         int x = from;
-        int stop = endapp-1;
+        int stop = tj.endapp-1;
         while(x<stop) {
-            if( pr.charAt(x) != c && x<upto) ++x;
+            if( tj.prog.charAt(x) != c && x<upto) ++x;
             else break;
         }
         return x<upto ? x : 0;
@@ -106,7 +111,7 @@ public class PT extends TJ {
         int x = find(from, upto, c);
         if( x!=0 ) return x;
         else {
-            eset(err);
+            tj.eset(err);
             return 0;
         }
     }
@@ -114,11 +119,11 @@ public class PT extends TJ {
     /*	special find for end of string. Minds the old null ending.
      */
     int findEOS( int x ) {
-        while( x<endapp) {
-            if( pr.charAt(x)==0 || pr.charAt(x)==0x22 ) return x;
+        while( x<tj.endapp) {
+            if( tj.prog.charAt(x)==0 || tj.prog.charAt(x)==0x22 ) return x;
             ++x;
         }
-        eset(CURSERR);
+        tj.eset(tj.CURSERR);
         return 0;
     }
 
@@ -127,21 +132,21 @@ public class PT extends TJ {
      */
     void rem() {
         char c;
-        while(cursor<endapp-2) {
-            c = pr.charAt(cursor);
+        while(tj.cursor<tj.endapp-2) {
+            c = tj.prog.charAt(tj.cursor);
             // skip whitespace
-            while( cursor<endapp-2 &&
+            while( tj.cursor<tj.endapp-2 &&
                     ( c==' ' || c==0x09 || c==0x0a || c==0x0d )  ) {
-                c = pr.charAt(++cursor);
+                c = tj.prog.charAt(++tj.cursor);
             }
             // if not comment flag it must be code
             if( !( lit(xcmnt)||lit(xcmnt2) ) ) {
                 return;
             }
             // eat text to beginning of next line
-            while(cursor<endapp-1) {
-                c = pr.charAt(cursor);
-                if( c!=0x0a && c!=0x0d ) ++cursor;
+            while(tj.cursor<tj.endapp-1) {
+                c = tj.prog.charAt(tj.cursor);
+                if( c!=0x0a && c!=0x0d ) ++tj.cursor;
                 else break;
             }
             // repeat the above for more comments
@@ -150,7 +155,7 @@ public class PT extends TJ {
     }
     /*
     	public void main(String args[]) {
-    pr="   foo   ";
+    prog="   foo   ";
     		symName();
     		System.out.println("PT~154 first,last = "+fname+", "+lname);
     	}

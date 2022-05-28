@@ -4,14 +4,21 @@ package tg37.tinyc;
 
 public class Expr extends PT {
     boolean trace=false;
-
+	Stack stk;
+	ST stmt;
+	Vartab vt;
+    public Expr() {
+    	this.stk = tj.stk;
+    	this.stmt = tj.stmt;
+    	this.vt = tj.vt;
+    }
+    
 /* Situation: parsing argument declarations, passed values are on the stack.
  * argp points into stack to an argument of type. 
  * Gets actual value of arg, calls valloc which parses and sets
  * up local with the passed value.
  */ 
-
-	void setArg( Stuff.Type type, int arg ) {
+	void setArg( TJ.Type type, int arg ) {
 /*
 		Stuff vp = stk.peek(arg);       // passed Stuff
 		boolean isarray = vp.isArray;
@@ -31,7 +38,7 @@ public class Expr extends PT {
 
     public void enter(int where) {   // c code tc~307
         if(trace)System.err.println("Expr~19: enter(" + where + ')' );
-        if(trace)System.err.println(" -> "+pr.substring(where,where+9));
+        if(trace)System.err.println(" -> "+tj.prog.substring(where,where+9));
         int arg = stk.size();    // needed BELOW
         int nargs=0;
         int varargs=0;
@@ -40,7 +47,7 @@ public class Expr extends PT {
         if(trace)System.err.println("Expr~25");
         if( !haveArgs ) {           			// AND not one of these...
             if(trace)System.err.println("Expr~");
-            char x = pr.charAt(cursor);
+            char x = tj.prog.charAt(tj.cursor);
             haveArgs =  ! (     x=='['
                                 || x==']'
                                 || x==0x3b   // ;
@@ -52,9 +59,9 @@ public class Expr extends PT {
         if(trace)System.err.println("Expr~37");
 
         if ( haveArgs ) {
-System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
+System.err.println("Expr~40, cursor-->"+tj.prog.substring(tj.cursor,tj.cursor+9));
             do {
-                if(error!=0)return;
+                if(tj.error!=0)return;
                 if( asgn()) ++nargs;
                 else break;  // break on error
             } while( lit(xcomma) );
@@ -62,10 +69,10 @@ System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
         if(trace) {
 			System.err.print("Expr~47, haveArgs,error,where: ");
 			System.err.print(" "+haveArgs);
-			System.err.print(" "+error);
+			System.err.print(" "+tj.error);
 			System.err.println(" "+where);
         }
-        if(error!=0)return;
+        if(tj.error!=0)return;
         lit(xrpar);   // optional )
         rem();
         if(where==0) {
@@ -75,30 +82,30 @@ System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
 //                        varargs=0;
 //fprintf(stderr,"\n~336E va %d na %d",varargs,nargs);
             }
-            else eset(MCERR);
+            else tj.eset(tj.MCERR);
             return;
         }
         if(trace)System.err.println("Expr~61");
-        if(trace)System.err.println(" ->"+pr.substring(where,where+9));
+        if(trace)System.err.println(" ->"+tj.prog.substring(where,where+9));
 // ABOVE  ^^^^   parse the args, set cursor
 // BELOW  vvvv   parse the parameters, declare/set their values, st() the body
 
-		int localstcurs=stcurs, localcurs=cursor;
-        cursor = where;
+		int localstcurs=tj.stcurs, localcurs=tj.cursor;
+        tj.cursor = where;
         vt.newfun();
 
         for(;;) {
             rem();
 			if(lit(xint)) {
 				  do {
-					  setArg(Stuff.Type.INT, arg);
+					  setArg(TJ.Type.INT, arg);
 					  arg++;
 				  } while(lit(xcomma));
 				  lit(xsemi);    // optional
 			}
 			else if ( lit(xchar)) {
 				do {
-					setArg(Stuff.Type.CHAR, arg);
+					setArg(TJ.Type.CHAR, arg);
 					arg++;
 				} while(lit(xcomma));
 				lit(xsemi);
@@ -114,9 +121,9 @@ System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
 // assure number of args == number of parms, clean up...
 	   if(varargs==0) {
 		   if(arg != stk.size()) {
-				cursor=localcurs;
-				stcurs=localstcurs;
-				eset(ARGSERR);
+				tj.cursor=localcurs;
+				tj.stcurs=localstcurs;
+				tj.eset(tj.ARGSERR);
 			}
 			while(nargs>0){
 				stk.popst();
@@ -124,15 +131,15 @@ System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
 			}
 		}
 // */
-		if(error==0)stmt.st();     //  <<-- execute fcn's body
+		if(tj.error==0)stmt.st();     //  <<-- execute fcn's body
 		else {
 //			whatHappened();
 			System.exit(1);
 		}
-		if(!leave)pushzero();
-		leave=false;
-		cursor=localcurs;
-		stcurs=localstcurs;
+		if(!tj.leave)pushzero();
+		tj.leave=false;
+		tj.cursor=localcurs;
+		tj.stcurs=localstcurs;
 		vt.fundone();
     }
 
@@ -142,14 +149,14 @@ System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
     /* An ASGN is a reln or an lvalue = asgn. Note that reln can match an lvalue.
      */
     public boolean asgn() {
-        if(trace)System.err.println("asgn~9: " + pr.charAt(cursor) );
+        if(trace)System.err.println("asgn~9: " + tj.prog.charAt(tj.cursor) );
         if(reln()) {
             if(lit(xeq)) {
                 asgn();
                 //			if(error==0)eq();      actions covered for now
             }
         }
-        return error!=0;
+        return tj.error!=0;
     }
 
     private int topdiff() {
@@ -165,7 +172,7 @@ System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
     /* a RELN is an expr or a comparison of exprs
      */
     boolean reln() {
-        if(trace)System.err.println("reln~26: " + pr.charAt(cursor) );
+        if(trace)System.err.println("reln~26: " + tj.prog.charAt(tj.cursor) );
         if(expr()) {
             if(lit(xle)) {
                 if(expr()) {
@@ -211,7 +218,7 @@ System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
     /* an EXPR is a term or sum (diff) of terms.
      */
     boolean expr() {
-        if(trace)System.err.println("expr~72: " + pr.charAt(cursor) );
+        if(trace)System.err.println("expr~72: " + tj.prog.charAt(tj.cursor) );
         if(lit(xminus)) {   /* unary minus */
             term();
             stk.pushk(-stk.toptoi());
@@ -221,7 +228,7 @@ System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
             stk.pushk(stk.toptoi());
         }
         else term();
-        while(error==0) {   /* rest of the terms */
+        while(tj.error==0) {   /* rest of the terms */
             boolean leftIsArray = (stk.peekTop()).isArray;
             boolean rightIsArray;
             if(lit(xminus)) {
@@ -248,16 +255,16 @@ System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
     /* a TERM is a factor or a product of factors.
      */
     boolean term() {
-        if(trace)System.err.println("term~109: " + pr.charAt(cursor) );
+        if(trace)System.err.println("term~109: " + tj.prog.charAt(tj.cursor) );
         factor();
-        while(error==0) {
+        while(tj.error==0) {
             if(lit(xstar)) {
                 factor();
-                if(error==0)stk.pushk( stk.toptoi() * stk.toptoi() );
+                if(tj.error==0)stk.pushk( stk.toptoi() * stk.toptoi() );
             }
             else if(lit(xslash)) {
-                if(pr.charAt(cursor)=='*' || pr.charAt(cursor)=='/') {
-                    --cursor;    /* opps, its a comment */
+                if(tj.prog.charAt(tj.cursor)=='*' || tj.prog.charAt(tj.cursor)=='/') {
+                    --tj.cursor;    /* opps, its a comment */
                     return true;
                 }
                 factor();
@@ -265,9 +272,9 @@ System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
                 int numer = stk.toptoi();
                 if(denom != 0) {
                     int div = numer/denom;
-                    if(error==0)stk.pushk(div);
+                    if(tj.error==0)stk.pushk(div);
                 }
-                else eset(DIVERR);
+                else tj.eset(tj.DIVERR);
             }
             else if(lit(xpcnt)) {
                 factor();
@@ -275,9 +282,9 @@ System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
                 int a=stk.toptoi();
                 if(b>0) {
                     int pct = a%b;
-                    if(error==0)stk.pushk(pct);
+                    if(tj.error==0)stk.pushk(pct);
                 }
-                else eset(DIVERR);
+                else tj.eset(tj.DIVERR);
             }
             else return true;  /* no more factors */
         }
@@ -289,12 +296,12 @@ System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
         stack.
      */
     void factor() {
-        if(trace)System.err.println("factor~151: " + pr.charAt(cursor) );
+        if(trace)System.err.println("factor~151: " + tj.prog.charAt(tj.cursor) );
         int cur;
         if(lit(xlpar)) {
             asgn();
-            cur=mustFind( cursor, cursor+5, ')', RPARERR );
-            if(cur>0) cursor = cur+1; /*after the paren */
+            cur=mustFind( tj.cursor, tj.cursor+5, ')', tj.RPARERR );
+            if(cur>0) tj.cursor = cur+1; /*after the paren */
             return;
         }
 
@@ -303,8 +310,8 @@ System.err.println("Expr~40, cursor-->"+pr.substring(cursor,cursor+9));
 
         else if( symName() ) {
             int where, len, obsize, stuff;
-System.err.println("Expr~219,factor: cursor->" + pr.charAt(cursor) );
-            cursor = lname+1;
+System.err.println("Expr~219,factor: cursor->" + tj.prog.charAt(tj.cursor) );
+            tj.cursor = lname+1;
             if( symNameIs("MC") ) {
                 enter(0);
                 return;
@@ -313,7 +320,7 @@ System.err.println("Expr~219,factor: cursor->" + pr.charAt(cursor) );
                 Var v = vt.addrval();  /* looks up symbol */
 System.err.println("Expr~226,factor: v " + v );
                 if( v==null ) {
-                    eset(SYMERR);    /* not declared */
+                    tj.eset(tj.SYMERR);    /* not declared */
                     return;
                 }
                 /*
@@ -362,58 +369,53 @@ System.err.println("Expr~200: is simple");
             }
         }
         else {
-            eset(SYNXERR);
+            tj.eset(tj.SYNXERR);
         }
     }
 
 //  good java below
     public Stuff konst() {
 //		int lname,fname;
-        int x;  //index into pr
+        int x;  //index into prog
         rem();
-        char c = pr.charAt(cursor);
+        char c = tj.prog.charAt(tj.cursor);
         if( c=='+' || c=='-' || (c>='0'&&c<='9') ) {
-            fname = cursor;
+            tj.fname = tj.cursor;
             do {
-                ++cursor;
-                c=pr.charAt(cursor);
-            } while(c>='0'&&c<='9' && cursor<endapp);
-            lname=cursor;
-
-
-
-            String s = pr.substring(fname,lname);
+                ++tj.cursor;
+                c = tj.prog.charAt(tj.cursor);
+            } while(c>='0'&&c<='9' && tj.cursor<tj.endapp);
+            tj.lname = tj.cursor;
+            String s = tj.prog.substring(tj.fname,tj.lname);
             int i = Integer.parseInt(s);
             return new Ival(i);
-
-
         } else if(lit("\"")) {
-            fname=cursor;
-            x = findEOS(fname);
+            tj.fname=tj.cursor;
+            x = findEOS(tj.fname);
             if( x>0 ) {
                 /* set lname = last char, cursor = lname+2 (past the quote) */
-                lname = x; /*at the quote */
-                cursor = x+1; /*after the quote */
+                tj.lname = x; /*at the quote */
+                tj.cursor = x+1; /*after the quote */
             }
             else {
-                eset(CURSERR);
+                tj.eset(tj.CURSERR);
                 return null;
             }
-            return new Sval(pr.substring(fname,lname));
+            return new Sval(tj.prog.substring(tj.fname,tj.lname));
 
         } else if(lit("\'")) {
-            fname=cursor;
+            tj.fname=tj.cursor;
             /* lname = last char, cursor = lname+2 (past the quote) */
-            x=mustFind(fname+1,fname+2,'\'',CURSERR);
+            x=mustFind(tj.fname+1,tj.fname+2,'\'',tj.CURSERR);
             if( x>0 ) {
-                lname = x-1;
-                cursor = x+1;
+                tj.lname = x-1;
+                tj.cursor = x+1;
             }
             else {
-                eset(CURSERR);
+                tj.eset(tj.CURSERR);
                 return null;
             }
-            return new Cval(pr.charAt(fname));
+            return new Cval(tj.prog.charAt(tj.fname));
 
         } else return null;  /* no match */
     }
@@ -428,12 +430,12 @@ System.err.println("Expr~200: is simple");
         String pr2 ="         (1+2)*3  3*(1+2)  (1+2*3)  1+(2*3) 88 ";       // null null 9 9 7 7 88
 //           012345678901234567890123456789012345678901234567890123456789
 //                     1         2         3         4         5
-        pr = pr2;
+        prog = pr2;
 // tests...
-        endapp = pr.length();
+        endapp = prog.length();
         cursor = 0;
         System.out.println("running Expr.main");
-        System.out.println("pr: -->>"+pr+"<<--");
+        System.out.println("prog: -->>"+prog+"<<--");
         Stuff con;
         con = expr.konst();
         System.out.println("constant is "+con);

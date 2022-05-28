@@ -1,35 +1,55 @@
 package tg37.tinyc;
 
 public class ST extends PT {
+	Expr exp;
+	Stack stk;
+	String prog;
+	public ST(){
+		this.exp = tj.exp;
+		this.stk = tj.stk;
+		this.prog = tj.prog;
+	}
     public boolean quit() {
         System.out.println("Use ^C");
         return false;
     }
-
+    public void at(int line){
+    	System.err.println(", at ST~" + line);
+//    	System.err.print(" cursor=" + cursor);
+//    	System.err.println(" -->"+prog.substring(cursor,cursor+9)+"<--");
+//    	System.err.println("prog  " + prog);
+    }
     public void st() {
+System.err.println("ST~15 prog: "+tj.prog);
+if(tj.prog==null)System.exit(99);
         int whstcurs, whcurs, objt, agin ;
-        brake=false;
+        tj.brake=false;
         rem();
-        stcurs = cursor;
+at(19);
+System.err.println("ST~20 prog: "+tj.prog);
+		tj.stcurs = tj.cursor;
+System.err.println("ST~21,cursor->"+tj.prog.substring(tj.cursor,tj.cursor+9)+"<--");
+at(22);
         if(decl()) {
+at(18);
             rem();
+at(26);
             return;
         }
         else if( lit(xlb) ) {    /* compound statement */
+at(30);
             for(;;) {
                 rem();
-                if(leave||brake||error!=0)return;
+                if(tj.leave||tj.brake||tj.error!=0)return;
                 if(lit(xrb)) {
                     rem();
                     return;
                 }
-//System.err.println("ST~32, xlb loop calling st, cursor->"
-//	+pr.substring(cursor,cursor+9));
                 st();
             }
         }
         else if(lit(xif)) {
-System.err.println("    ST~40, xif");
+at(42);
             if(exp.asgn()) {
                 if(stk.toptoi()!=0) {
                     st();
@@ -50,7 +70,7 @@ System.err.println("    ST~40, xif");
             }
         }
         else if(lit(xwhile)) {
-System.err.println("    ST~61, xwhile");
+at(63);
             lit(xlpar);    /* optional left paren */
             if( !exp.asgn() )return;   /* error */
             lit(xrpar);
@@ -58,18 +78,18 @@ System.err.println("    ST~61, xwhile");
             if( condition ) {
                 /* prepare for repeating/skipping while (stcurs)
                 	or object */
-                agin = stcurs;
-                objt = cursor;
+                agin = tj.stcurs;
+                objt = tj.cursor;
                 st();
 
-                if(brake) {
-                    cursor = objt;	/* break: done with the while */
+                if(tj.brake) {
+                    tj.cursor = objt;	/* break: done with the while */
                     skipSt();		/* skip over the object */
-                    brake = false;
+                    tj.brake = false;
                     return;
                 }
                 else {
-                    cursor = agin;	/* no break: do the entire while again */
+                    tj.cursor = agin;	/* no break: do the entire while again */
                     return;
                 }
             }
@@ -78,12 +98,12 @@ System.err.println("    ST~61, xwhile");
             }
         }
         else if(lit(xsemi)) {
-System.err.println("    ST~89, xsemi");
+at(91);
             rem();
         }
         else if(lit(xreturn)) {
-System.err.println("    ST~93, xreturn");
-            char c = pr.charAt(cursor);
+at(95);
+            char c = prog.charAt(tj.cursor);
             boolean eos = ( lit(xrpar)
                             || c == '['
                             || c == ']'
@@ -98,22 +118,22 @@ System.err.println("    ST~93, xreturn");
             else {
                 exp.asgn();  /* specified return value */
             }
-            leave=true;		/* signal st() to leave the function */
+            tj.leave=true;		/* signal st() to leave the function */
             return;
         }
         else if(lit(xbreak)) {
-System.err.println("    ST~113, xbreak");
-            brake=true;
+at(115);
+            tj.brake=true;
             return;
         }
         else if( exp.asgn() ) {      /* if expression discard its value */
-System.err.println("    ST~118, cursor -->"+pr.substring(cursor,cursor+19));
+at(120);
             stk.toptoi();
             lit(xsemi);
         }
         else {
-System.err.println("    ST~123, eset");
-            eset(STATERR);
+at(125);
+            tj.eset(tj.STATERR);
         }
     }
     /*      skip a possibly compound statement. Shortcoming is brackets
@@ -135,11 +155,11 @@ System.err.println("    ST~123, eset");
             return;
         }
         else {                                  /* simple statement, eol or semi     697 ends */
-            while(++cursor<endapp) {
-                char c = pr.charAt(cursor);
+            while(++tj.cursor<tj.endapp) {
+                char c = prog.charAt(tj.cursor);
                 if( (c==0x0d)||(c=='\n')||(c==';') )break;
             }
-            ++cursor;
+            ++tj.cursor;
             rem();
         }
     }
@@ -149,14 +169,14 @@ System.err.println("    ST~123, eset");
      */
     public int skip(char l, char r) {
         int counter = 1;
-        while( counter>0 && cursor<endapp ) {
-            char c = pr.charAt(cursor);
+        while( counter>0 && tj.cursor<tj.endapp ) {
+            char c = prog.charAt(tj.cursor);
             if(c==l)++counter;
             if(c==r)--counter;
-            ++cursor;
+            ++tj.cursor;
         };
         if( counter>0 )return counter;
-        ++cursor;    // bump past matched arg r.
+        ++tj.cursor;    // bump past matched arg r.
         return 0;
     }
     /* Match char or int, else do nothing. If match parse
@@ -166,32 +186,38 @@ System.err.println("    ST~123, eset");
      *  optional semi.
      */
     public boolean decl() {
-        Stuff.Type t;
+        TJ.Type t;
+at(180);
         if( lit(xchar) ) {
+at(182);
             do {
-                varAlloc( Stuff.Type.CHAR, null );  /* 2nd arg is vpassed */
+                varAlloc( TJ.Type.CHAR, null );  /* 2nd arg is vpassed */
             } while( lit(xcomma) );
         } else if( lit(xint) ) {
+at(187);
             do {
-                varAlloc( Stuff.Type.INT, null );  /* 2nd arg is vpassed */
+                varAlloc( TJ.Type.INT, null );  /* 2nd arg is vpassed */
             } while( lit(xcomma) );
         } else {
+at(192);
             return false;  /* not decl */
         }
+at(195);
         lit(xsemi);    /* is decl */
+at(197);
         return true;                                          
     }
     /*      SITUATION: int or char is parsed.
      *      Parses one variable. Makes allocation and symbol entry.
      */
-    public void varAlloc(Stuff.Type type, Stuff vpassed) {
+    public void varAlloc(TJ.Type type, Stuff vpassed) {
         boolean isArray=false;
         int alen=1;
         if( !exp.symName() ) {             /*defines fname,lname. True is match.*/
-            eset(SYMERR);
+            tj.eset(tj.SYMERR);
             return;
         }
-        cursor=lname+1;
+        tj.cursor=lname+1;
         if( lit("(") ) {
             isArray = true;   /* distance to data (was vclass) */
             int fn=fname; /* localize globals that asgn() may change */
@@ -199,8 +225,8 @@ System.err.println("    ST~123, eset");
             if( exp.asgn() ) alen=stk.toptoi()+1;  /* dimension */
             fname=fn;               /* restore the globals */
             lname=ln;
-            int x = mustFind(cursor,cursor+5,')',RPARERR);
-            if(x>0)cursor = x+1;
+            int x = mustFind(tj.cursor,tj.cursor+5,')',tj.RPARERR);
+            if(x>0)tj.cursor = x+1;
         } else {
             isArray = false;
             alen = 1;

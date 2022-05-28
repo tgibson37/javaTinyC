@@ -8,9 +8,10 @@ public class Var extends PT {
 //a variable
     String name;
     boolean isArray;
-    Stuff.Type type;
+    TJ.Type type;
     int len;
     Stuff value;
+    Vartab vt;
 
     public String toString() {
         return name+": "+value;
@@ -40,21 +41,22 @@ public class Var extends PT {
 
     /* SITUATION: Declaration is parsed, and its descriptive data known. Create
     	a Stuff and add it to curfun. Formerly newvar. */
-    public Var( boolean isArray, Stuff.Type type, int len, Stuff passed ) {
+    public Var( boolean isArray, TJ.Type type, int len, Stuff passed ) {
         this.isArray = isArray;
         this.type = type;
         this.len  = len;
-        this.name = pr.substring(fname,lname);
+        this.name = tj.prog.substring(fname,lname);
+        this.vt = tj.vt;
         if(passed!=null)this.value = passed.klone();   // function arg
         else {    // declaration incl function parameter
-            if(type==Type.INT) {
+            if(type==TJ.Type.INT) {
                 this.value = Stuff.createIval(0);
             }
-            else if(type==Stuff.Type.CHAR) {
+            else if(type==TJ.Type.CHAR) {
                 this.value = Stuff.createCval((char)0);
             }
-            else if(type==Stuff.Type.FCN) {
-                this.value = Stuff.createFvar(cursor);
+            else if(type==TJ.Type.FCN) {
+                this.value = Stuff.createFvar(tj.cursor);
             }
         }
         vt.curfun.put(name, this);
@@ -64,9 +66,9 @@ public class Var extends PT {
 /* tests...
     public static void main(String[] args) {
         System.out.println("running Var.main");
-        Vartab vt = new Vartab();
+        Vartab vt = new Vartab(tj);
         Stack stk = new Stack();
-        pr="  L1   L2   G3   G4   a1   a2   b1   b2   ..   ..   ..   ..   ..   ..   ..   ";
+        prog="  L1   L2   G3   G4   a1   a2   b1   b2   ..   ..   ..   ..   ..   ..   ..   ";
 //  01234567890123456789012345678901234567890123456789012345678901234567890123456789
 //            1         2         3         4         5         6         7
         vt.curfun = vt.libs;    // should get L1,L2

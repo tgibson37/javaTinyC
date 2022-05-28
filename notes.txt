@@ -1424,8 +1424,201 @@ and call it with object prefix. None seem a natural home. So maybe the choice is
 put into the smallest, vartab. OR back in TC in its own class. That is natural.
 But a private class? It needs to be public if it ever becomes an MC. So the best
 is its own file as public class. OR back in TC.java...
-	putting loadCode back into TC
-	wrapping it into a public class
+x	putting loadCode back into TC
+x	wrapping it into a public class
+It compiles! Crashes at ST~109, null pointer.
+	$ ./r TC foo.tc
+	running TC.main
+	  libs
+	
+	  globals
+	
+	  locals
+	Exception in thread "main" java.lang.NullPointerException
+		at tg37.tinyc.ST.st(ST.java:109)
+		at tg37.tinyc.TC.init(TC.java:47)
+		at tg37.tinyc.TC.main(TC.java:54)
+---
+x	Commit anyway.
+---------------------
+
+Sat, May 21
+Goal: find why ST~109 NPEs.
+	How did I get above~1437 to show stack trace, nut .r run now gives none.
+	ST added at() trying to find NPE cause. NEED to bracket the NPE.
+	Alternative is jdb SSing.
+Call from TC~64 to stmt.at(10064) works.
+Call from TC~66 to stmt.st() also works
+	getting at ST~12,16,17,186,NPE
+	TC is innocent.
+	pr must be null. ST: at12,16,NPE
+scanning code for 'pr' whole word ...
+x	Dialog
+x	Expr
+x	PT
+x	ST
+x	Stack
+x	Stuff
+x	TC  ~44, load code, set not declared
+x	TJ	~22, global data, declared not set
+x	Var
+x	Vartab
+---------------------
+$ jdb tg37.tinyc.TC foo.tc    > run   runs to end
+ref: 
+https://stackoverflow.com/questions/20018866/specifying-sourcepath-in-jdb-what-am-i-doing-wrong
+	jdb -sourcepath src -classpath target mypackage.Main
+---------------------
+
+Sun, May 22
+The duplicate progs happen via inheritance of TJ, the global data place.
+new ST gets its own copy of TJ, and ditto new TC, Stack, and PT. 4 copies !!!
+minor REFACTOR...
+x	remove 'extends TJ' from Stuff,PT,Stack,TC;   <<-- the "top 4" 
+	TC.init:
+x		instantiate: tj=new TJ()
+		pass tj to constructors of top 4
+	The top 4:
+		constructors have arg tj, and capture it.
+		also capture tj.xx as class var for direct communication to xx.
+			(do this on an as-needed basis)
+	They see all data via tj.whatever, tj.eset(int error), too.
+AUDIT of intermodule dependencies.
+	modified jc to clear,clean,compile one,dump all errors
+	removed extends TJ 
+	Running one one uncovered at a time.
+Dialog needs TJ, prog, error, endapp, ...
+Expr needs PT, TJ, Stuff, Stack, ...
+PT needs cursor, endapp, prog, eset, CURSERR, ...
+ST needs PT, Stuff, prog, ...
+Stack needs TJ,Stuff,POPERR
+	StackImpl  --  extends TJ
+Stuff needs prog, Type, TYPEERR
+Var
+Vartab needs PT, Var, TJ, prog, ...
+---------------------
+
+Mon, May 23
+CURRENT goal: composite instead of inheritance.
+STATUS: mods to jc,clean as survey tool. 
+x	Temporary, will have to put back when survey completed.
+x	Dialog (model for other fixes)
+	Expr
+	PT
+	ST
+	Stack
+	Stuff
+	TC
+	TJ
+	Var
+	Vartab
+---------------------
+Current hierarchy...(9am)
+	Dialog.java:public class Dialog extends PT {
+	Expr.java:public class Expr extends PT {
+	Stack.java:class StackImpl<Stuff> extends TJ {
+	ST.java:public class ST extends PT {
+	Stuff.java:class Sval extends Stuff {
+	Stuff.java:class Cval extends Stuff {
+	Stuff.java:class Ival extends Stuff {
+	Stuff.java:class Pval extends Stuff {
+	Stuff.java:class Fvar extends Stuff {
+	Var.java:public class Var extends PT {
+	Vartab.java:public class Vartab extends PT {
+---
+Simplify Stack.java ???  One class, no StackImpl.
+	NO: StackImpl knows about Stuff, but nothing else.
+		Stack has convenience tools like topdiff, toptoi.
+		Stack bridges between data and Stuff, wraps and unwraps.
+---
+TC.init builds the communication (tj) to TJ, and...
+	passes that to the top 5. Each constructor captures that and uses it to
+		capture local copy of exp,stk,stmt,vt,dl.
+Code it top 5 use these local copies instead of classNameDot or inheritance.
+x	Dialog
+	Expr
+x	PT
+	ST
+	Stack
+	Vartab
+Who owns cursor ???   TJ~35, initialized TC~62 (0 -> seed)
+	TJ is base class ONLY for StackImpl, which needs Stuff.
+	Do I add TJ to the 'top 5' list ???     <<==== YES
+ISSUE: PT cannot find cursor or TJ.cursor, 
+		but probably can find tj.cursor.
+PT joins the (now) top 6
+	is base class for Dialog,Expr,ST,Var,Vartab
+		but NOT Stack.
+---------------------
+
+Tue, May 24
+On a roll. Have done Dialog and PT. But in Expr hit Type issue.
+	Type is enum defined in TJ, used in Expr and 5 others. Adding a dot-tj
+	prefix doesn't work...
+			void setArg( tj.Type type, int arg ) {
+                         ^    "unexpected type"   
+	declared in TJ...
+		    public enum Type {CHAR, INT, FCN, STR };
+	It needs to be TJ.Type      <<<===
+---------------------
+
+Thur, May 26
+Might need to back out yesterday's work. Easier way is for constructor to
+declare needed communication links as class vars instead of dozens of tj-dot
+prefixes. Need to check recently changed sources. But hold on that for awhile.
+The work done is harmless, just unneccesary. Currently doing ST.
+-----
+Type confusion. 
+	Declared TJ~14, enum, includes FCN.
+	"unexpected type":  Vartab~134:   tj.Type.FCN
+	other usage: 
+		Expr,ST: TJ.type   
+		Stuff: declared as class var: TJ.Type type;
+			also usage: Type.FCN Type.INT, etc
+---------------------
+
+Fri, May 27
+Learned that java 5 added enum, and an enum is a class. Each value is an object.
+Each object is referenced via the enum name, dot, value. The custom is values
+are all caps, and because the enum is a class it has a leading cap.
+SO: TJ.Type.INT is an object. The objects have an API, but == is probably all I
+need. Type.FCN probably won't cut it. The current work of getting a full good
+compile will fix that. Stuff~188 is an example already flagged by ./jc.
+
+On the other hand the XXXERR codes will remain #defines, so tj.XXXERR is proper. 
+----
+Back to compile fixup...
+---
+Construtor issue. Getting complaint: "required: no arguments".
+The issue seems to be super class PT, base class for 5 parsing
+classes: Dialog,Expr,ST,Var and Vartab (for some reason.)
+	They all need access to tj. Some need access to other modules.
+The pattern of constructor calls WAS instantiate everything in TC's loadAndGo().
+But all the constructors have tj args, and capture their own tj. And PT, rtheir
+base class, does, too. 
+BETTER: the base class PT alone captures tj. The derived can add specials to
+that. 
+---------------------
+
+Sat, May 29
+TC.tj has "master" pointer to tj:  TC tj;
+	Inited by TC constructor;
+	TJ must copy this into class var,
+		derivatives therefore inherit their tj.
+So: derivatives have default constructor and DO NOT declare a tj.
+BUT: default constr calls super(), 
+x	so PT needs noargs constructor that does nothing.
+x	Dialog
+x	Expr
+x	ST 
+??	Var
+	Vartab
+enum Type really should be in Stuff, not TJ.   <<== LATER
+Why does Var extend PT? It should not do any parsing.
+Vartabs tclink() does parsing.
+COMPILES !!!! 6:55AM.
+	Commit
+last commit ~1442 above, what have I accomplished since then ???
 
 
 
@@ -1436,17 +1629,5 @@ is its own file as public class. OR back in TC.java...
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+	$ jdb tg37.tinyc.TC foo.tc
 	./r TC foo.tc    <<== test run

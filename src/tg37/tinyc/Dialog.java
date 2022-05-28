@@ -3,13 +3,12 @@ package tg37.tinyc;
 public class Dialog extends PT {
     public int countch(int f, int t, char c) {
         int k=1;   /* start on line 1 */
-        while( f++ <= t) if(pr.charAt(f)==c) ++k;
+        while( f++ <= t) if(tj.prog.charAt(f)==c) ++k;
         return k;
     }
-
     public void errToWords() {
         String x="";
-        switch(error) {
+        switch(tj.error) {
         case 2:
             x="CURSERR, cursor out of range";
             break;
@@ -104,7 +103,7 @@ public class Dialog extends PT {
     public int fchar(int k) {
         char c;
         do {
-            c = pr.charAt(k);
+            c = tj.prog.charAt(k);
             if(c==0x0a||c==0x0d)break;
         } while( --k >= -1);
         return k;
@@ -113,9 +112,9 @@ public class Dialog extends PT {
     public int lchar(int k) {
         char c;
         do {
-            c = pr.charAt(k);
+            c = tj.prog.charAt(k);
             if(c==0x0a||c==0x0d)break;
-        } while( ++k < endapp);
+        } while( ++k < tj.endapp);
         return k-1;
     }
 
@@ -123,33 +122,33 @@ public class Dialog extends PT {
      *      line with error and carot under.
      */
     public void whatHappened() {
-        if(error==KILL) errToWords();
-        else if(error!=0) {
+        if(tj.error==tj.KILL) errToWords();
+        else if(tj.error!=0) {
             int fc, lc;
             int firstSignif=0, blanks, lineno;
-System.err.println("Dialog~72: errat,EPR = "+errat+" "+EPR);
-            char e = pr.charAt(errat);
-            if(e==0x0a||e==0x0d)--errat;
-            if(errat<lpr) {
+System.err.println("Dialog~72: errat,EPR = "+tj.errat+" "+tj.EPR);
+            char e = tj.prog.charAt(tj.errat);
+            if(e==0x0a||e==0x0d)--tj.errat;
+            if(tj.errat<tj.lpr) {
                 System.out.println("\nseed ");
                 lineno=0;
             }
-            else if(errat<apr) {
-                lineno = countch(lpr,errat,(char)0x0a);
-                if(lineno<=0)lineno = countch(0,errat,(char)0x0d);
+            else if(tj.errat<tj.apr) {
+                lineno = countch(tj.lpr,tj.errat,(char)0x0a);
+                if(lineno<=0)lineno = countch(0,tj.errat,(char)0x0d);
                 System.out.print("\nlib ");
             }
             else {
-                lineno = countch(apr,errat,(char)0x0a);
-                if(lineno<=0)lineno = countch(apr,errat,(char)0x0d);
+                lineno = countch(tj.apr,tj.errat,(char)0x0a);
+                if(lineno<=0)lineno = countch(tj.apr,tj.errat,(char)0x0d);
                 System.out.print("\napp ");
             }
-            System.out.print("line "+lineno+" (cursor pr["+errat+"])");
+            System.out.print("line "+lineno+" (cursor prog["+tj.errat+"])");
 //
 //                errToWords();
 //                fc=fchar(errat);
 //                while(fc+firstSignif < EPR){
-//                	char c = pr.charAt(fc+firstSignif);
+//                	char c = prog.charAt(fc+firstSignif);
 //                	if(c==' ' || c=='\t') ++firstSignif;
 //                }
 //                lc=lchar(errat);
@@ -162,7 +161,7 @@ System.err.println("Dialog~72: errat,EPR = "+errat+" "+EPR);
 
         }
         else {
-            if(!quiet)System.out.println("\ndone");
+            if(!tj.quiet)System.out.println("\ndone");
         }
     }
 
@@ -188,11 +187,11 @@ System.err.println("Dialog~72: errat,EPR = "+errat+" "+EPR);
         System.out.print(c);
     }
     void pft(int f,int t) {
-        System.out.print(pr.substring(f,t));
+        System.out.print(tj.prog.substring(f,t));
     }
 
     public void logo() {
-        if(quiet)return;
+        if(tj.quiet)return;
         System.out.println(
             "***  TINY-C VERSION 1.0,  COPYRIGHT 1977, T A GIBSON  ***"
         );
