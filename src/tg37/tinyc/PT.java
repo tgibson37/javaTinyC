@@ -7,7 +7,8 @@ package tg37.tinyc;
 
 public class PT {
 	public static TJ tj;
-
+	public PT(){ tj = TC.tj; }
+		
     /************** literals **************/
     final String xif = "if";
     final String xelse = "else";
@@ -44,7 +45,7 @@ public class PT {
     final String xvarargs = "...";
     final String xquote = "\"";
 
-    static int fname,lname;
+//    static int fname,lname;
 
     /* Bump cursor over whitespace. Then return true on match and advance
        cursor beyond the literal else false and do not advance cursor
@@ -74,10 +75,10 @@ public class PT {
         char c = tj.prog.charAt(tj.cursor);
         while( c == ' ' || c == '\t' ) c = tj.prog.charAt(++tj.cursor);
         temp=tj.cursor;
-        if( Character.isLetter(c) || c=='_') fname = temp;
+        if( Character.isLetter(c) || c=='_') tj.fname = temp;
         else return false;
         while( Character.isLetterOrDigit(c=tj.prog.charAt(++temp)) || c=='_') ;
-        lname = temp;
+        tj.lname = temp;
         return true;  /* good, fname and lname defined */
     }
 
@@ -149,11 +150,4 @@ public class PT {
         }
         return;
     }
-    /*
-    	public void main(String args[]) {
-    prog="   foo   ";
-    		symName();
-    		System.out.println("PT~154 first,last = "+fname+", "+lname);
-    	}
-     */
 }

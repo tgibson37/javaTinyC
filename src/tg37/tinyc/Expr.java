@@ -7,6 +7,7 @@ public class Expr extends PT {
 	static Stack stk;
 	static ST stmt;
 	static Vartab vt;
+	static Dialog dl;
 
     private static Expr instance;
     private Expr(){}
@@ -16,6 +17,7 @@ public class Expr extends PT {
 			stk = Stack.getInstance();
 			stmt = ST.getInstance();
 			vt = Vartab.getInstance();
+			dl = Dialog.getInstance();
         }
         return instance;
     }
@@ -142,7 +144,7 @@ public class Expr extends PT {
 // */
 		if(tj.error==0)stmt.st();     //  <<-- execute fcn's body
 		else {
-			whatHappened();
+			dl.whatHappened();
 			System.exit(1);
 		}
 		if(!tj.leave)pushzero();
@@ -319,7 +321,7 @@ public class Expr extends PT {
 
         else if( symName() ) {
             int where, len, obsize, stuff;
-            tj.cursor = lname+1;
+            tj.cursor = tj.lname+1;
             if( symNameIs("MC") ) {
                 enter(0);
                 return;

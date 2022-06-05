@@ -10,11 +10,18 @@ public class TJ {
 	public ST stmt;
 	public Vartab vt;
 	public Dialog dl;
-	public PT pt;
+//	public PT pt;
     public enum Type {CHAR, INT, FCN, STR };
     
     private static TJ instance;
-    private TJ(){}
+    private TJ(){
+    	exp=Expr.getInstance();
+    	stk=Stack.getInstance();
+    	stmt=ST.getInstance();
+    	vt=Vartab.getInstance();
+    	dl=Dialog.getInstance();
+//    	pt=PT.getInstance();
+    }
     public static synchronized TJ getInstance(){
         if(instance == null){
             instance = new TJ();
@@ -25,6 +32,8 @@ public class TJ {
     public void eset(int e) {
         error = e;
         errat = cursor;
+        dl.whatHappened();
+        System.exit(0);  // zero because the issue is in the tiny-c code. TC is ok.
     }
 
     /* Global data */

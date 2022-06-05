@@ -203,14 +203,14 @@ public class ST extends PT {
             tj.eset(tj.SYMERR);
             return;
         }
-        tj.cursor=lname+1;
+        tj.cursor=tj.lname+1;
         if( lit("(") ) {
             isArray = true;   /* distance to data (was vclass) */
-            int fn=fname; /* localize globals that asgn() may change */
-            int ln=lname;
+            int fn=tj.fname; /* localize globals that asgn() may change */
+            int ln=tj.lname;
             if( exp.asgn() ) alen=stk.toptoi()+1;  /* dimension */
-            fname=fn;               /* restore the globals */
-            lname=ln;
+            tj.fname=fn;               /* restore the globals */
+            tj.lname=ln;
             int x = mustFind(tj.cursor,tj.cursor+5,')',tj.RPARERR);
             if(x>0)tj.cursor = x+1;
         } else {

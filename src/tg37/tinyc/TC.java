@@ -57,11 +57,10 @@ public class TC {
 //			vt.dumpVarTab();
             stmt.st();
         } catch(Exception e) {
-            System.err.println(e);
             e.printStackTrace();
         }
     }
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
     	TC tc;
         System.out.println("running TC.main");
         tc = new TC();

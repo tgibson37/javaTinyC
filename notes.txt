@@ -1768,14 +1768,55 @@ Goal: tidy the code.  DONE
 New crash, trying to pop an empty stack. Stack~136. 
 	eset was set, but no call to whatHappened, hence to exit properly.
 Goal: java-ize whatHappened().
-
-
-
-
-
-
-
-
+	code is deep in BELOW, call to stmt.st() to execute fcn body.
+eset now calls whatHappened, and then exits. 
+	So all the tests if(tj.error!=0) are redundant.
+infinite recursion...
+	at tg37.tinyc.TJ.<init>(TJ.java:22)
+	at tg37.tinyc.TJ.getInstance(TJ.java:27)
+	at tg37.tinyc.Dialog.<init>(Dialog.java:8)
+	at tg37.tinyc.Dialog.getInstance(Dialog.java:12)
+====================
+    private static Dialog instance;
+    private Dialog(){
+    	tj = TJ.getInstance();   <<== BAD, causes infinite loop
+    }
+    public static synchronized Dialog getInstance(){
+        if(instance == null){
+            instance = new Dialog();
+        }
+        return instance;
+    }
+-------------
+    private TJ(){
+    	exp=Expr.getInstance();
+    	stk=Stack.getInstance();
+    	stmt=ST.getInstance();
+    	vt=Vartab.getInstance();
+    	dl=Dialog.getInstance();
+//    	pt=PT.getInstance();
+    }
+    public static synchronized TJ getInstance(){
+        if(instance == null){
+            instance = new TJ();
+        }
+--------
+There are 5 derivatives. 
+Breaking the loop: EACH derivative constructor:  tj = TC.tj; 
+	NOT getInstance().
+There is only one TJ. The derivaative copy is convenience, and further 
+convenience is added by the TJ constructor. TJ tj is available FIRST so those
+conveniences can be added as needed by derivative constructors. That way what
+would be  TC.tj.prog becomes simply tj.prog, and TJ.exp.asgn() becomes
+exp.asgn(). There will always be that single prefix. 
+	TJ is acting as a header file. It should own all globals.
+	PT is a base class for parsing, common tools plus pointers to modules.
+	TC is a pure loader/launcher. It owns only what it needs plus the seed copy
+		of TJ tj.
+	"Parsers" is terminolgy for derivatives of PT, "modules" for all the
+		singletons, all but PT, Stuff, Var.
+---
+STILL NOT FIXED...  PT~52 cannot find tj.
 
 
 

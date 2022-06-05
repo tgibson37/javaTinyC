@@ -51,7 +51,7 @@ void at(int line) {System.err.println("at Vartab: "+line);}
     /* looks up a symbol pointed to by fname,lname:
          locals, globals, library levels in that order */
     Var addrval() {
-        String sym = tj.prog.substring(fname,lname);
+        String sym = tj.prog.substring(tj.fname,tj.lname);
         return addrval_all(sym);
     }
     private Map<String,Var> peekTop() {
@@ -132,8 +132,8 @@ void at(int line) {System.err.println("at Vartab: "+line);}
                 }
             }
             else if(symName()) {     /* fctn decl */
-                tj.cursor = lname+1;
-                Stuff kursor = new Pval(lname);
+                tj.cursor = tj.lname+1;
+                Stuff kursor = new Pval(tj.lname);
                 new Var(false, TJ.Type.FCN, 1, kursor); // ~65: self installed
                 int xxx = mustFind(tj.cursor, tj.endapp, '[',tj.LBRCERR);
                 if(xxx>0) {

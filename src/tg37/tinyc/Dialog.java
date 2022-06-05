@@ -1,10 +1,12 @@
 package tg37.tinyc;
 
 public class Dialog extends PT {
-    static TJ tj = TC.tj;   // Dialog's copy, declared up in base PT
+    static TJ tj;   // Dialog's copy, declared up in base PT
 	
     private static Dialog instance;
-    private Dialog(){}
+    private Dialog(){
+    	tj = TC.tj;
+    }
     public static synchronized Dialog getInstance(){
         if(instance == null){
             instance = new Dialog();

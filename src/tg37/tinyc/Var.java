@@ -47,8 +47,8 @@ void at(int line) {System.err.println("at Var: "+line);}
         this.isArray = isArray;
         this.type = type;
         this.len  = len;
-        this.name = tj.prog.substring(fname,lname);
-        this.vt = tj.vt;         //BUG, tj.vt is null
+        this.name = tj.prog.substring(tj.fname,tj.lname);
+        this.vt = tj.vt;
         if(passed!=null){
         	this.value = passed.klone();   // function arg
         }
