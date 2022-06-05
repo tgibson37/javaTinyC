@@ -1,18 +1,24 @@
 /*	Stack: local stack, basic push/pop methods.
- *	Requires TJ.class, specifically STACKSIZE, Stuff.class which defines
- *	a Stack entry.
+ *	Requires TJ.class, specifically STACKSIZE.
  */
 package tg37.tinyc;
 import java.util.*;
 
 public class Stack {
-	StackImpl<Stuff> stack;
-	TJ tj;
-    public void Stack(TJ tj) {
-    	this.tj = tj;
-    	stack = new StackImpl<Stuff>();
-    }
+	static StackImpl stack;
+	static TJ tj;
 
+    private static Stack instance;
+    private Stack(){}
+    public static synchronized Stack getInstance(){
+        if(instance == null){
+            instance = new Stack();
+            stack = StackImpl.getInstance();
+            tj = TJ.getInstance();
+        }
+        return instance;
+    }
+    
     /* basic pusher */
     public void pushst(Stuff stuff) {
         stack.push(stuff);
@@ -79,7 +85,8 @@ public class Stack {
     }
 
 // tests...
-    private static void kase(Stuff s, String sb, Stack stk) {
+/*
+	private static void kase(Stuff s, String sb, Stack stk) {
         stk.pushst(s);
         System.out.print("Should be:"+sb);
         int x = stk.toptoi();
@@ -97,11 +104,25 @@ public class Stack {
         kase( str, "9s", stk );
         System.out.println("      and eset(TYPEERR)");
     }
+*/
 }
+
 /*	Ref: https://contactsunny.medium.com/stack-implementation-example-in-java-9e2923fab87e
  */
-class StackImpl<Stuff> extends TJ {
+class StackImpl {
     private List<Stuff> list = new ArrayList<Stuff>();
+
+    private static StackImpl instance;
+	static TJ tj;
+    private StackImpl(){}
+    public static synchronized StackImpl getInstance(){
+        if(instance == null){
+            instance = new StackImpl();
+            tj = TJ.getInstance();
+        }
+        return instance;
+    }
+    
     public int size() {
         return list.size();
     }
@@ -109,9 +130,8 @@ class StackImpl<Stuff> extends TJ {
         list.add(value);
     }
     Stuff pop() {
-//System.err.println("\n\nStack~95, cursor: "+TJ.cursor);
         if (this.list.isEmpty()) {
-            eset(POPERR);
+            tj.eset(tj.POPERR);
         }
         Stuff value = this.list.get(this.list.size() - 1);
         this.list.remove(this.list.size() - 1);
@@ -119,23 +139,23 @@ class StackImpl<Stuff> extends TJ {
     }
     Stuff peek(int argp) {
     	if(this.list.size()<argp) {
-    		eset(POPERR);
+    		tj.eset(tj.POPERR);
     	}
     	return this.list.get(argp);
     }
     Stuff peekTop() {
         if (this.list.isEmpty()) {
-            eset(POPERR);
+            tj.eset(tj.POPERR);
         }
         Stuff value = this.list.get(this.list.size() - 1);
         return value;
     }
-    List<Stuff> getStackAndEmpty() {
-        List<Stuff> stack = new ArrayList<Stuff>(this.list);
+    List getStackAndEmpty() {
+        List stack = new ArrayList<Stuff>(this.list);
         this.list.removeAll(stack);
         return stack;
     }
 //    void flush() {
-//        this.list = new ArrayList<>();
+//        this.list = new ArrayList<Stuff><>();
 //    }
 }

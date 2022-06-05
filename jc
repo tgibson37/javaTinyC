@@ -4,6 +4,7 @@ clear
 #/home/tom/Projects/Java/tiny-c/clean
 date > errs
 javac -d cls src/tg37/tinyc/*.java 2>> errs
+#javac -d cls -Xlint:unchecked src/tg37/tinyc/*.java 2>> errs
 #javac -d cls  src/tg37/tinyc/TJ.java 2>> errs
 #javac -d cls src/tg37/tinyc/PT.java 2>> errs
 #javac -d cls  src/tg37/tinyc/Dialog.java 2>> errs

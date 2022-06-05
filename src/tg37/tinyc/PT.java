@@ -6,11 +6,7 @@
 package tg37.tinyc;
 
 public class PT {
-	TJ tj;
-    public PT(TJ tj) {
-    	this.tj = tj;
-    }
-    public PT() {}
+	public static TJ tj;
 
     /************** literals **************/
     final String xif = "if";
@@ -48,7 +44,7 @@ public class PT {
     final String xvarargs = "...";
     final String xquote = "\"";
 
-    int fname,lname;
+    static int fname,lname;
 
     /* Bump cursor over whitespace. Then return true on match and advance
        cursor beyond the literal else false and do not advance cursor
@@ -93,7 +89,7 @@ public class PT {
     }
 
     /*	State is not changed by find or mustFind. Returned value is
-    	sole purpose of find. That plus setting err for mustFind.
+    	sole purpose of find.
      */
     int find( int from, int upto, char c) {
         int x = from;
@@ -105,7 +101,7 @@ public class PT {
         return x<upto ? x : 0;
     }
 
-    /*	same as find but sets err on no match
+    /*	Same as find but sets err on no match.
      */
     int mustFind( int from, int upto, char c, int err ) {
         int x = find(from, upto, c);

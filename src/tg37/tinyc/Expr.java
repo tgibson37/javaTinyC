@@ -4,16 +4,26 @@ package tg37.tinyc;
 
 public class Expr extends PT {
     boolean trace=false;
-	Stack stk;
-	ST stmt;
-	Vartab vt;
-    public Expr() {
-    	this.stk = tj.stk;
-    	this.stmt = tj.stmt;
-    	this.vt = tj.vt;
+	static Stack stk;
+	static ST stmt;
+	static Vartab vt;
+
+    private static Expr instance;
+    private Expr(){}
+    public static synchronized Expr getInstance(){
+        if(instance == null){
+            instance = new Expr();
+			stk = Stack.getInstance();
+			stmt = ST.getInstance();
+			vt = Vartab.getInstance();
+        }
+        return instance;
     }
-    
-/* Situation: parsing argument declarations, passed values are on the stack.
+ void at(int line){
+ 	 System.err.println("Expr at: "+line);
+ }
+
+ /* Situation: parsing argument declarations, passed values are on the stack.
  * argp points into stack to an argument of type. 
  * Gets actual value of arg, calls valloc which parses and sets
  * up local with the passed value.
@@ -59,7 +69,6 @@ public class Expr extends PT {
         if(trace)System.err.println("Expr~37");
 
         if ( haveArgs ) {
-System.err.println("Expr~40, cursor-->"+tj.prog.substring(tj.cursor,tj.cursor+9));
             do {
                 if(tj.error!=0)return;
                 if( asgn()) ++nargs;
@@ -133,7 +142,7 @@ System.err.println("Expr~40, cursor-->"+tj.prog.substring(tj.cursor,tj.cursor+9)
 // */
 		if(tj.error==0)stmt.st();     //  <<-- execute fcn's body
 		else {
-//			whatHappened();
+			whatHappened();
 			System.exit(1);
 		}
 		if(!tj.leave)pushzero();
@@ -310,7 +319,6 @@ System.err.println("Expr~40, cursor-->"+tj.prog.substring(tj.cursor,tj.cursor+9)
 
         else if( symName() ) {
             int where, len, obsize, stuff;
-System.err.println("Expr~219,factor: cursor->" + tj.prog.charAt(tj.cursor) );
             tj.cursor = lname+1;
             if( symNameIs("MC") ) {
                 enter(0);
@@ -318,7 +326,6 @@ System.err.println("Expr~219,factor: cursor->" + tj.prog.charAt(tj.cursor) );
             } else {
 //                Vartab vt = Vartab.getInstance();
                 Var v = vt.addrval();  /* looks up symbol */
-System.err.println("Expr~226,factor: v " + v );
                 if( v==null ) {
                     tj.eset(tj.SYMERR);    /* not declared */
                     return;
@@ -333,12 +340,10 @@ System.err.println("Expr~226,factor: v " + v );
                 */
                 if( v.value.isFcn() ) {
                     where = v.value.getInt();
-System.err.println("Expr~238,isFcn, where:  " + where );
                     enter(where);
                 }
                 else {   /* is var name */
                     if( v.isArray ) {
-System.err.println("Expr~184: isArray do later");
                         /*
                         					// reduce the class and recompute obsize
                         					obsize = typeToSize(--class,type);
@@ -353,7 +358,6 @@ System.err.println("Expr~184: isArray do later");
                         					return;
                         */
                     } else {
-System.err.println("Expr~200: is simple");
                         /*
                         				// is simple. Must push as 'L', &storagePlace.
                         					if(class==1){
@@ -375,7 +379,6 @@ System.err.println("Expr~200: is simple");
 
 //  good java below
     public Stuff konst() {
-//		int lname,fname;
         int x;  //index into prog
         rem();
         char c = tj.prog.charAt(tj.cursor);

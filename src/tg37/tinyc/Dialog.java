@@ -1,6 +1,17 @@
 package tg37.tinyc;
 
 public class Dialog extends PT {
+    static TJ tj = TC.tj;   // Dialog's copy, declared up in base PT
+	
+    private static Dialog instance;
+    private Dialog(){}
+    public static synchronized Dialog getInstance(){
+        if(instance == null){
+            instance = new Dialog();
+        }
+        return instance;
+    }
+    
     public int countch(int f, int t, char c) {
         int k=1;   /* start on line 1 */
         while( f++ <= t) if(tj.prog.charAt(f)==c) ++k;

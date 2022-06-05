@@ -12,6 +12,15 @@ public class TJ {
 	public Dialog dl;
 	public PT pt;
     public enum Type {CHAR, INT, FCN, STR };
+    
+    private static TJ instance;
+    private TJ(){}
+    public static synchronized TJ getInstance(){
+        if(instance == null){
+            instance = new TJ();
+        }
+        return instance;
+    }
 
     public void eset(int e) {
         error = e;
@@ -19,7 +28,7 @@ public class TJ {
     }
 
     /* Global data */
-    String prog;   // tc program text
+    static String prog;   // tc program text
     int lpr, apr, endapp, prused, EPR;
     /* EPR is end of program SPACE.
      *      pr starts with startSeed, then libs, then app, then values

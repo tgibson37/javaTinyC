@@ -13,7 +13,9 @@ public class Var extends PT {
     Stuff value;
     Vartab vt;
 
-    public String toString() {
+void at(int line) {System.err.println("at Var: "+line);}
+
+	public String toString() {
         return name+": "+value;
     }
 
@@ -46,8 +48,10 @@ public class Var extends PT {
         this.type = type;
         this.len  = len;
         this.name = tj.prog.substring(fname,lname);
-        this.vt = tj.vt;
-        if(passed!=null)this.value = passed.klone();   // function arg
+        this.vt = tj.vt;         //BUG, tj.vt is null
+        if(passed!=null){
+        	this.value = passed.klone();   // function arg
+        }
         else {    // declaration incl function parameter
             if(type==TJ.Type.INT) {
                 this.value = Stuff.createIval(0);

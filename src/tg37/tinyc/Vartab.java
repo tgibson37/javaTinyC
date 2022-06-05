@@ -11,10 +11,20 @@ public class Vartab extends PT {
     public List<Map<String,Var>> locals = new LinkedList<Map<String,Var>>();
     public Map<String,Var> curfun = null;
 
-	ST stmt;
-    public  Vartab() {
-    	super();
-    	this.stmt = tj.stmt;
+void at(int line) {System.err.println("at Vartab: "+line);}
+
+    static TJ tj;
+	static ST stmt;
+    private static Vartab instance;
+    private Vartab(){}
+    public static synchronized Vartab getInstance(){
+        if(instance == null){
+            instance = new Vartab();
+            stmt = ST.getInstance();
+            tj = TJ.getInstance();
+            tj.vt = instance;
+        }
+        return instance;
     }
     
     /* SITUATION: Function call. Push a new vartab for the functions locals */
@@ -80,7 +90,7 @@ public class Vartab extends PT {
     /*	Checks for balanced brackets, cursor to stop. */
     int checkBrackets(int stop) {
         int err;
-        int save=tj.endapp;  /* _skip uses endapp as limit */
+        int save=tj.endapp;  /* skip uses endapp as limit */
         tj.endapp=stop;
         while(tj.cursor<stop) {
             while(tj.prog.charAt(tj.cursor++) != '[' && tj.cursor<stop) ;
@@ -97,30 +107,23 @@ public class Vartab extends PT {
         int x;
         int savedCursor=tj.cursor;
         tj.cursor=0;
-        if(checkBrackets(tj.lpr)!=0)tj.eset(tj.RBRCERR+1000);
+        if(checkBrackets(tj.lpr)!=0){
+        	tj.eset(tj.RBRCERR+1000);
+        }
         if(checkBrackets(tj.apr)!=0)tj.eset(tj.RBRCERR+2000);
         if(checkBrackets(tj.EPR-1)!=0)tj.eset(tj.RBRCERR+3000);
         if(tj.error!=0)tj.dl.whatHappened();
         tj.cursor=tj.lpr;
         curfun = libs;
         while(tj.cursor<tj.endapp && tj.error==0) {
-//boolean dump = cursor>5450;
-//if(dump){
-// System.err.println("Var~135, cursor: "+cursor);
-// System.err.println(prog.substring(cursor-5,cursor)
-// 	 +"==>>"+prog.substring(cursor,cursor+9));
-//}
             int lastcur = tj.cursor;
-//if(dump)System.err.println("Var139, error: "+error);
             rem();
-//if(dump)System.err.println("Var141, error: "+error);
             if(lit(xlb)) {
                 stmt.skip('[',']');
             }
             else if(stmt.decl()) {
             }
             else if(lit(xendlib)) {
-//System.err.println("Var148: "+xendlib);
                 if(curfun==libs) {   /* 1st endlib, assume globals follow */
                     curfun = globals;
                 }
@@ -140,7 +143,7 @@ public class Vartab extends PT {
             }
             else if(tj.prog.charAt(tj.cursor)=='#') {
                 char s;
-                while(++tj.cursor<tj.endapp) {
+                while(++tj.cursor<tj.endapp) {     // do includes LATER
                     char c = tj.prog.charAt(tj.cursor);
                     if( (c==0x0d)||(c=='\n') )break;
                 }

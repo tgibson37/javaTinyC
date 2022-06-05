@@ -12,11 +12,11 @@ abstract public class Stuff {
     public int len;            // 1 for datum, else length of array
     public boolean lvalue;
     public boolean isArray;    // used to be 'class,' 0 for datum 1 for array
+	static TJ tj;
 
-	static TJ tj = null;
-    Stuff(TJ.Type t, int l, boolean lv, boolean ia ) {
-    	if(tj==null)tj=new TJ();
-        type = t;
+	Stuff(TJ.Type t, int l, boolean lv, boolean ia ) {
+		tj = TJ.getInstance();
+		type = t;
         len = l;
         lvalue = lv;
         isArray = ia;

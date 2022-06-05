@@ -1,43 +1,40 @@
 package tg37.tinyc;
 
 public class ST extends PT {
-	Expr exp;
-	Stack stk;
-	String prog;
-	public ST(){
-		this.exp = tj.exp;
-		this.stk = tj.stk;
-		this.prog = tj.prog;
-	}
-    public boolean quit() {
+	static Expr exp;
+	static Stack stk;
+	static String prog;
+
+    private static ST instance;
+    private ST(){}
+    public static synchronized ST getInstance(){
+        if(instance == null){
+            instance = new ST();
+			exp = Expr.getInstance();
+			stk = Stack.getInstance();
+			tj = TJ.getInstance();
+			prog = tj.prog;
+        }
+        return instance;
+    }
+
+	public boolean quit() {
         System.out.println("Use ^C");
         return false;
     }
     public void at(int line){
     	System.err.println(", at ST~" + line);
-//    	System.err.print(" cursor=" + cursor);
-//    	System.err.println(" -->"+prog.substring(cursor,cursor+9)+"<--");
-//    	System.err.println("prog  " + prog);
     }
     public void st() {
-System.err.println("ST~15 prog: "+tj.prog);
-if(tj.prog==null)System.exit(99);
         int whstcurs, whcurs, objt, agin ;
         tj.brake=false;
         rem();
-at(19);
-System.err.println("ST~20 prog: "+tj.prog);
 		tj.stcurs = tj.cursor;
-System.err.println("ST~21,cursor->"+tj.prog.substring(tj.cursor,tj.cursor+9)+"<--");
-at(22);
         if(decl()) {
-at(18);
             rem();
-at(26);
             return;
         }
         else if( lit(xlb) ) {    /* compound statement */
-at(30);
             for(;;) {
                 rem();
                 if(tj.leave||tj.brake||tj.error!=0)return;
@@ -49,7 +46,6 @@ at(30);
             }
         }
         else if(lit(xif)) {
-at(42);
             if(exp.asgn()) {
                 if(stk.toptoi()!=0) {
                     st();
@@ -70,7 +66,6 @@ at(42);
             }
         }
         else if(lit(xwhile)) {
-at(63);
             lit(xlpar);    /* optional left paren */
             if( !exp.asgn() )return;   /* error */
             lit(xrpar);
@@ -98,11 +93,9 @@ at(63);
             }
         }
         else if(lit(xsemi)) {
-at(91);
             rem();
         }
         else if(lit(xreturn)) {
-at(95);
             char c = prog.charAt(tj.cursor);
             boolean eos = ( lit(xrpar)
                             || c == '['
@@ -122,17 +115,14 @@ at(95);
             return;
         }
         else if(lit(xbreak)) {
-at(115);
             tj.brake=true;
             return;
         }
         else if( exp.asgn() ) {      /* if expression discard its value */
-at(120);
             stk.toptoi();
             lit(xsemi);
         }
         else {
-at(125);
             tj.eset(tj.STATERR);
         }
     }
@@ -187,24 +177,20 @@ at(125);
      */
     public boolean decl() {
         TJ.Type t;
-at(180);
         if( lit(xchar) ) {
-at(182);
             do {
                 varAlloc( TJ.Type.CHAR, null );  /* 2nd arg is vpassed */
             } while( lit(xcomma) );
-        } else if( lit(xint) ) {
-at(187);
+        } 
+        else if( lit(xint) ) {
             do {
                 varAlloc( TJ.Type.INT, null );  /* 2nd arg is vpassed */
             } while( lit(xcomma) );
-        } else {
-at(192);
+        } 
+        else {
             return false;  /* not decl */
         }
-at(195);
         lit(xsemi);    /* is decl */
-at(197);
         return true;                                          
     }
     /*      SITUATION: int or char is parsed.

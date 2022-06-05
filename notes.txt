@@ -1600,25 +1600,183 @@ BETTER: the base class PT alone captures tj. The derived can add specials to
 that. 
 ---------------------
 
-Sat, May 29
+Sat, May 28
 TC.tj has "master" pointer to tj:  TC tj;
 	Inited by TC constructor;
 	TJ must copy this into class var,
 		derivatives therefore inherit their tj.
-So: derivatives have default constructor and DO NOT declare a tj.
-BUT: default constr calls super(), 
-x	so PT needs noargs constructor that does nothing.
+default constr calls super(). NEED xx(tj) constructors. 
 x	Dialog
 x	Expr
 x	ST 
-??	Var
-	Vartab
+x	Var
+x	Vartab
+x	TC.loadAndGo
 enum Type really should be in Stuff, not TJ.   <<== LATER
-Why does Var extend PT? It should not do any parsing.
-Vartabs tclink() does parsing.
 COMPILES !!!! 6:55AM.
-	Commit
-last commit ~1442 above, what have I accomplished since then ???
+x	Commit:    simplified inheritance, better composition
+---
+Compiles but crashes, null ptr exception.
+	Exception in thread "main" java.lang.NullPointerException
+		at tg37.tinyc.Expr.<init>(Expr.java:11)
+		at tg37.tinyc.TC.initAndGo(TC.java:58)
+		at tg37.tinyc.TC.main(TC.java:79)
+tj is null in PT's derivatives. NEED: super(tj) in each. 
+Each derived has own cp of PT variables. Can only get ther via
+derived constructor. Need to pass tj tp each/
+---
+Var does parsing. So extend PT is valid. 
+	Called when ST or ABOVE hit an 'int' or 'char'		
+	Parses and adds to vartab.	
+---
+More refactoring may be needed. Var and STuff should be pure data with only
+services ABOUT that data, like getValue(), etc. Vartab shoud be pure data
+structure with only code to service that structure. NEED VP, VarParse ???
+CURRENT Var...
+	Finishes parsing char or int.
+	Constructor with 5 args... 
+		builds the Var
+		grabs value if one is passed
+		curfun.put(name,this);
+	Only other code is toString()
+Var is really VarParse. But it is ALSO Var, the item entered into curfun.
+REMEMBER==>> don't put void as return value of a constructor  <<==REMEMBER
+Everything compiles, runs further, crashes somewhere in ST.st(),  NullPtrEx.
+	Loads & prints prog, 
+	'at' traces in ST: 22,180,192 and Expr~219.
+	cursor in seed ->main();]\n...
+It seems we are inside the compound statement, looking up main.	vt is null.
+new Vartab(tj) at TC~60, initAndGo(). AND Var~70, covered, test main.
+	So it is not duplicated.
+tclink should have put both libs and globals, call at TC~62.
+---------------------
+
+Sun, May 29
+Null vt, my technique is fragile and hard to debug ??? Maybe implement
+getInstance for PT and derivatives. Both TC and 'the five' build what they need
+in their respective constructors calling getInstance. Direct instead of ripple.
+x		getInstance() defined in PT,Dialog,Expr,ST,Vartab ('the five').
+x		new replaced by getInstance call in TC.loadAndGo() and the five's
+x		constructors.
+--------------
+Compiles, crashes in tclink: Vartab~103
+        int savedCursor=tj.cursor;
+    Has to be tj, decl'd: PT~9.
+Something is locking up my term tabs.
+There are 5 PTs, one each for the parse-five.  SEE ~1599 above.
+	OR eliminate, eg...
+	    static TJ tj = TC.tj;   // Dialog's copy, declared up in base PT
+	in Dialog is used eg to get tj.prog. BETTER is a local prog.
+STATUS: Vartab~104 NullPtrEx
+---------------------
+
+Tue, May 31
+        int savedCursor=tj.cursor;   <<== FIXED
+Compiles, tclink runs, does nothing, then crashes NPE.
+	Fix tclink first
+---------------------
+
+Wed, Jun 1
+ST needs tj defined, declared: PT~9
+I need to document the glue-plan. Study code in TJ, PT, Dialog, etc.
+----
+STUDY...
+$ grep "new Var" *.java -n                                 called from...
+ST.java:245:     new Var(isArray, type, alen, vpassed);      varAlloc
+Var.java:70:     Vartab vt = new Vartab(tj);                 test main
+Var.java:78:     new Var(true, Stuff.Type.INT, 1, null);     test main
+Var.java:87:     new Var(true, Stuff.Type.INT, 1, null);     test main
+Vartab.java:22:  instance = new Vartab();                    getInstance
+Vartab.java:150: new Var(false, TJ.Type.FCN, 1, kursor);     tclink
+	Only 2 calls do actual work: varAlloc and tclink.
+Writing document: glue.otd.
+---------------------
+
+Wed, Jun 1
+Finished glue.otd and git added it.
+	tj is null at ST~180.
+	tj.getInstance:
+		Stack.java:17:            tj = TJ.getInstance();
+		Stack.java:121:            tj = TJ.getInstance();
+		Stuff.java:18:		tj = TJ.getInstance();
+		TC.java:55:    	tj = TJ.getInstance();    // defines TC.tj, done first
+		TJ.java:18:    public static synchronized TJ getInstance(){
+		Vartab.java:24:            tj = TJ.getInstance();
+There are 2 'String prog;'   ST~6, TJ~31.
+	TJ's is the real one, loaded by initAndGo(). ST's is a convenience copy.
+	ST's copy is made BEFORE prog is loaded. Too early. Remove from constructor
+		and put into appropriate method with an if(null). It has to be early 
+		enuf, before any uses. 
+---------------------
+
+Fri, Jun 3
+Yesterday observed that prog is unloaded, hence null, when TC.tj et all are
+copied into the modules. 
+x	NEED to load the code into prog before propogating ptrs.
+x	Run got further, in main parsing 'foo.'    <<==  GOOD, BUT another NPE.
+x		crashed in tclink, NPE.    <<== FIXED
+---------------------
+
+Fri, Jun 3
+Infinite loop... 
+at Vartab: 138		<<== TOP: tcinit, symName hit
+at Vartab: 142
+at Var: 47
+at Var: 53
+at Var: 54
+at Var: 56
+at Var: 71
+vt: tg37.tinyc.Vartab@19469ea2
+curfun: {=: 4337}    <<== advances: 4337,4395,4437,4552,...   Var~73
+at Var: 73
+at Vartab: 144
+at Vartab: 146
+at Vartab: 148
+at Vartab: 152
+at Vartab: 162
+, at ST~180
+, at ST~192
+at Vartab: 138    <<== loop...
+at Vartab: 142
+	fname is 0 always. 
+---
+FLOW:
+	Vartab~138:  about 36 calls made in tclink to VT119,151; cursor advancing.
+	THEN it repeats with cursor back at 313. The loop is above tclink.
+		$ ./gj tclink
+		src/tg37/tinyc/TC.java:62:			vt.tclink();
+		src/tg37/tinyc/Vartab.java:106:     public void tclink() {
+down in varalloc cursor damaged ???  YES    	varAlloc call ST~212 
+	ST~228
+---------------------
+
+Sun, Jun 4
+varalloc has lname==0. Should not be called unless f/lname are defined.
+	Wierd logic...  BUT exactly mimics the C version. Probably '77, too. 
+		if(!symName()){eset(..);return;}
+		cursor=lname+1
+	lname should be defined. Is the bug in symName ???  PT~72
+		symName defines f/lname and returns true.
+			  PT~78: fname 4829
+			  PT~78: lname 4833
+				 ST~238: cursor 4829
+				 ST~240: cursor 1
+        ST~239: tj.cursor=lname+1;
+    So the BUG is two copies of f/lname.   <<== FIXED. static f/lname.
+    	And maybe all those strings should be static.  LATER.
+Goal: tidy the code.  DONE
+New crash, trying to pop an empty stack. Stack~136. 
+	eset was set, but no call to whatHappened, hence to exit properly.
+Goal: java-ize whatHappened().
+
+
+
+
+
+
+
+
+
 
 
 
