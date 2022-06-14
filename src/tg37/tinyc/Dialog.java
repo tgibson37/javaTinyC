@@ -1,7 +1,9 @@
 package tg37.tinyc;
 
 public class Dialog extends PT {
-    static TJ tj;   // Dialog's copy, declared up in base PT
+//    static TJ tj;   // Dialog's copy, declared up in base PT
+
+void at(int line){ System.err.println("at Dialog line "+line); }
 	
     private static Dialog instance;
     private Dialog(){
@@ -119,7 +121,7 @@ public class Dialog extends PT {
             c = tj.prog.charAt(k);
             if(c==0x0a||c==0x0d)break;
         } while( --k >= -1);
-        return k;
+        return k+1;
     }
     /* returns index to last character of the current line */
     public int lchar(int k) {
@@ -128,25 +130,26 @@ public class Dialog extends PT {
             c = tj.prog.charAt(k);
             if(c==0x0a||c==0x0d)break;
         } while( ++k < tj.endapp);
-        return k-1;
+        return k;
     }
 
     /*      Prints end of program message, "done" if no error, else code and
      *      line with error and carot under.
      */
     public void whatHappened() {
+//System.err.println("Dialog~138: errat,error = "+tj.errat+" "+tj.error);
+//System.err.println(tj.prog.substring(tj.cursor-10,tj.cursor+10));
         if(tj.error==tj.KILL) errToWords();
         else if(tj.error!=0) {
             int fc, lc;
             int firstSignif=0, blanks, lineno;
-System.err.println("Dialog~72: errat,EPR = "+tj.errat+" "+tj.EPR);
             char e = tj.prog.charAt(tj.errat);
             if(e==0x0a||e==0x0d)--tj.errat;
-            if(tj.errat<tj.lpr) {
+            if(tj.errat < tj.lpr) {
                 System.out.println("\nseed ");
                 lineno=0;
             }
-            else if(tj.errat<tj.apr) {
+            else if(tj.errat < tj.apr) {
                 lineno = countch(tj.lpr,tj.errat,(char)0x0a);
                 if(lineno<=0)lineno = countch(0,tj.errat,(char)0x0d);
                 System.out.print("\nlib ");
@@ -156,33 +159,27 @@ System.err.println("Dialog~72: errat,EPR = "+tj.errat+" "+tj.EPR);
                 if(lineno<=0)lineno = countch(tj.apr,tj.errat,(char)0x0d);
                 System.out.print("\napp ");
             }
-            System.out.print("line "+lineno+" (cursor prog["+tj.errat+"])");
-//
-//                errToWords();
-//                fc=fchar(errat);
-//                while(fc+firstSignif < EPR){
-//                	char c = prog.charAt(fc+firstSignif);
-//                	if(c==' ' || c=='\t') ++firstSignif;
-//                }
-//                lc=lchar(errat);
-//                pft(fc,lc);
-//                System.out.println("");
-//                pft(fc,fc+firstSignif-1);        /* leading whitespace */
-//                blanks=errat-fc-firstSignif-1;   /* blanks to carot */
-//                while(--blanks >= 0) System.out.print(" ");
-//                System.out.println("^");
-
+            System.out.print("line "+lineno+" (cursor prog["+tj.errat+"]): ");
+			errToWords();
+			fc=showLine(tj.cursor);
+			showPosition(fc,tj.cursor);
         }
         else {
             if(!tj.quiet)System.out.println("\ndone");
         }
     }
-
-    void showLine(int line) {
+    int showLine(int cur) {
         int fc, lc;
-        fc=fchar(line);
-        lc=lchar(line);
+        fc=fchar(cur);
+        lc=lchar(cur);
         pft(fc,lc);
+        pc('\n');
+        return fc;
+    }
+    void showPosition(int fc, int cur){
+    	while(fc<cur){ pc(' '); fc++; }
+    	pc('^');
+        pc('\n');
     }
 
     /************ simple prints ******************/

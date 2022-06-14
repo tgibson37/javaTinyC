@@ -89,12 +89,15 @@ void at(int line) {System.err.println("at Vartab: "+line);}
     }
     /*	Checks for balanced brackets, cursor to stop. */
     int checkBrackets(int stop) {
+//System.err.println("Vartab~92, cursor,stop: "+tj.cursor+" "+stop);
         int err;
         int save=tj.endapp;  /* skip uses endapp as limit */
         tj.endapp=stop;
         while(tj.cursor<stop) {
-            while(tj.prog.charAt(tj.cursor++) != '[' && tj.cursor<stop) ;
-            if(tj.cursor<stop) {
+            while(tj.prog.charAt(tj.cursor)!='['  &&  tj.cursor<stop) {
+            	tj.cursor++;
+            }
+            if(++tj.cursor<stop) {
                 err=stmt.skip('[',']');
                 if( err != 0 )return err;
             }
@@ -108,6 +111,8 @@ void at(int line) {System.err.println("at Vartab: "+line);}
         int savedCursor=tj.cursor;
         tj.cursor=0;
         if(checkBrackets(tj.lpr)!=0){
+System.err.print("Vartab~111, cursor: "+tj.cursor);
+System.err.println(", ---->"+tj.prog.substring(tj.cursor,tj.cursor+29) );
         	tj.eset(tj.RBRCERR+1000);
         }
         if(checkBrackets(tj.apr)!=0)tj.eset(tj.RBRCERR+2000);

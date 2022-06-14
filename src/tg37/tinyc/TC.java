@@ -38,6 +38,7 @@ public class TC {
         tj.endapp = sb.length();
         sb = sb.append("\n   \n   \n");  // a bit of padding
         tj.lpr = startSeed.length();
+//System.err.println("TC~41 lpr: "+tj.lpr);
         tj.apr = tj.lpr + libs.length() + 11;
         tj.prog = new String(sb);
         tj.EPR = tj.prog.length();
@@ -57,7 +58,7 @@ public class TC {
 //			vt.dumpVarTab();
             stmt.st();
         } catch(Exception e) {
-            e.printStackTrace();
+//            e.printStackTrace();
         }
     }
     public static void main(String[] args) {

@@ -3,7 +3,7 @@
 package tg37.tinyc;
 
 public class Expr extends PT {
-    boolean trace=false;
+    static boolean trace=false;
 	static Stack stk;
 	static ST stmt;
 	static Vartab vt;
@@ -22,7 +22,7 @@ public class Expr extends PT {
         return instance;
     }
  void at(int line){
- 	 System.err.println("Expr at: "+line);
+// 	 System.err.println("Expr at: "+line+" lpr: "+tj.lpr);
  }
 
  /* Situation: parsing argument declarations, passed values are on the stack.
@@ -31,17 +31,16 @@ public class Expr extends PT {
  * up local with the passed value.
  */ 
 	void setArg( TJ.Type type, int arg ) {
-/*
-		Stuff vp = stk.peek(arg);       // passed Stuff
+/*		Stuff vp = stk.peek(arg);       // passed Stuff
 		boolean isarray = vp.isArray;
         boolean lvalue = vp.lvalue;
         int stacktype = vp.type;
         if( lvalue) {
-            where = (char*)vp.up;
+            where = vp.up;
             if( isarray ) { 
                 vp.up = *((char**)(*arg).value.up);
-            }
-            else if( stacktype==Int ) vp.ui = get_int(where);
+            } else
+            if( stacktype==Int ) vp.ui = get_int(where);
             else if( stacktype==Char) vp.ui = get_char(where);
         }
         varAlloc( type, vp);
@@ -49,27 +48,19 @@ public class Expr extends PT {
     }
 
     public void enter(int where) {   // c code tc~307
-        if(trace)System.err.println("Expr~19: enter(" + where + ')' );
-        if(trace)System.err.println(" -> "+tj.prog.substring(where,where+9));
         int arg = stk.size();    // needed BELOW
         int nargs=0;
         int varargs=0;
         lit(xlpar); 		// optional (
-        boolean haveArgs = ! (  lit(xrpar) );  // NOT empty ()
-        if(trace)System.err.println("Expr~25");
-        if( !haveArgs ) {           			// AND not one of these...
-            if(trace)System.err.println("Expr~");
-            char x = tj.prog.charAt(tj.cursor);
-            haveArgs =  ! (     x=='['
+        char x = tj.prog.charAt(tj.cursor);
+        boolean haveArgs =  ! ( lit(xrpar)
+            	                || x=='['
                                 || x==']'
                                 || x==0x3b   // ;
                                 || x=='\n'
                                 || x==0x0d   // <CR>
                                 || x=='/'
                           );
-        }
-        if(trace)System.err.println("Expr~37");
-
         if ( haveArgs ) {
             do {
                 if(tj.error!=0)return;
@@ -77,27 +68,17 @@ public class Expr extends PT {
                 else break;  // break on error
             } while( lit(xcomma) );
         }
-        if(trace) {
-			System.err.print("Expr~47, haveArgs,error,where: ");
-			System.err.print(" "+haveArgs);
-			System.err.print(" "+tj.error);
-			System.err.println(" "+where);
-        }
         if(tj.error!=0)return;
         lit(xrpar);   // optional )
         rem();
         if(where==0) {
             if(stk.size()>0) {
-                if(trace)System.err.println("Expr~53: NEED machinecall, covered for now");
 //                        machinecall( nargs );
 //                        varargs=0;
-//fprintf(stderr,"\n~336E va %d na %d",varargs,nargs);
             }
             else tj.eset(tj.MCERR);
             return;
         }
-        if(trace)System.err.println("Expr~61");
-        if(trace)System.err.println(" ->"+tj.prog.substring(where,where+9));
 // ABOVE  ^^^^   parse the args, set cursor
 // BELOW  vvvv   parse the parameters, declare/set their values, st() the body
 
@@ -115,6 +96,7 @@ public class Expr extends PT {
 				  lit(xsemi);    // optional
 			}
 			else if ( lit(xchar)) {
+System.err.println("Expr~100, char arg");
 				do {
 					setArg(TJ.Type.CHAR, arg);
 					arg++;
@@ -160,7 +142,6 @@ public class Expr extends PT {
     /* An ASGN is a reln or an lvalue = asgn. Note that reln can match an lvalue.
      */
     public boolean asgn() {
-        if(trace)System.err.println("asgn~9: " + tj.prog.charAt(tj.cursor) );
         if(reln()) {
             if(lit(xeq)) {
                 asgn();
@@ -183,7 +164,7 @@ public class Expr extends PT {
     /* a RELN is an expr or a comparison of exprs
      */
     boolean reln() {
-        if(trace)System.err.println("reln~26: " + tj.prog.charAt(tj.cursor) );
+        if(trace)System.err.println("reln~187: " + tj.prog.charAt(tj.cursor) );
         if(expr()) {
             if(lit(xle)) {
                 if(expr()) {
@@ -229,7 +210,7 @@ public class Expr extends PT {
     /* an EXPR is a term or sum (diff) of terms.
      */
     boolean expr() {
-        if(trace)System.err.println("expr~72: " + tj.prog.charAt(tj.cursor) );
+        if(trace)System.err.println("expr~233: " + tj.prog.charAt(tj.cursor) );
         if(lit(xminus)) {   /* unary minus */
             term();
             stk.pushk(-stk.toptoi());
@@ -266,7 +247,7 @@ public class Expr extends PT {
     /* a TERM is a factor or a product of factors.
      */
     boolean term() {
-        if(trace)System.err.println("term~109: " + tj.prog.charAt(tj.cursor) );
+        if(trace)System.err.println("term~270: " + tj.prog.charAt(tj.cursor) );
         factor();
         while(tj.error==0) {
             if(lit(xstar)) {
@@ -307,7 +288,6 @@ public class Expr extends PT {
         stack.
      */
     void factor() {
-        if(trace)System.err.println("factor~151: " + tj.prog.charAt(tj.cursor) );
         int cur;
         if(lit(xlpar)) {
             asgn();

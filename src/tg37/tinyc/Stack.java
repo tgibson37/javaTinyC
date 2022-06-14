@@ -27,6 +27,9 @@ public class Stack {
     public Stuff popst() {
         return stack.pop();
     }
+    Stuff peek(int argp) {
+    	return stack.peek(argp);
+    }
     public Stuff peekTop() {
         return stack.peekTop();
     }

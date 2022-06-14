@@ -30,36 +30,37 @@ public class TJ {
     }
 
     public void eset(int e) {
+System.err.print("TJ~33 eset: ");
         error = e;
         errat = cursor;
         dl.whatHappened();
+//Thread.dumpStack();
         System.exit(0);  // zero because the issue is in the tiny-c code. TC is ok.
     }
 
     /* Global data */
     static String prog;   // tc program text
-    int lpr, apr, endapp, prused, EPR;
+    static int  apr, endapp, prused, EPR, lpr;
     /* EPR is end of program SPACE.
-     *      pr starts with startSeed, then libs, then app, then values
+     *      pr starts with startSeed, then libs, then app
      *      lpr is start of libraries
      *      apr is start of application program
      *      endapp is end of ALL program text,
-     *      endapp+10 start of value space
      *      prused includes values, moves up/down with fcn entry/leaving
      *      EPR is pointer to last byte of pr array
      */
-    int error;    // from list below. ZERO is good.
-    int errat;	 // where error occurred
-    boolean quiet;
-    int cursor;   // index into pr
-    int stcurs;	 // current statement
-    int fname,lname;  // most recently matched symbol
-    boolean leave;	// set true by return statement
-    boolean brake;	// set true by break statement
+    static int error;    // from list below. ZERO is good.
+    static int errat;	 // where error occurred
+    static boolean quiet;
+    static int cursor;   // index into pr
+    static int stcurs;	 // current statement
+    static int fname,lname;  // most recently matched symbol
+    static boolean leave;	// set true by return statement
+    static boolean brake;	// set true by break statement
 // leave and brake are restored to false when their respective action is complete.
 
     /* type flags */
-    final int CHAR = 0;
+    int CHAR = 0;
     int INT  = 1;
     int STRING = 2;
 

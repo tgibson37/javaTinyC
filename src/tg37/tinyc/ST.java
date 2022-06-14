@@ -6,7 +6,7 @@ public class ST extends PT {
 	static String prog;
 
     private static ST instance;
-    private ST(){}
+    private ST(){super();}
     public static synchronized ST getInstance(){
         if(instance == null){
             instance = new ST();
@@ -26,6 +26,7 @@ public class ST extends PT {
     	System.err.println(", at ST~" + line);
     }
     public void st() {
+//System.err.println("ST~29 cursor: "+tj.cursor);
         int whstcurs, whcurs, objt, agin ;
         tj.brake=false;
         rem();
@@ -160,9 +161,10 @@ public class ST extends PT {
     public int skip(char l, char r) {
         int counter = 1;
         while( counter>0 && tj.cursor<tj.endapp ) {
-            char c = prog.charAt(tj.cursor);
+            char c = tj.prog.charAt(tj.cursor);
             if(c==l)++counter;
             if(c==r)--counter;
+//System.err.println("ST~166: c,counter "+c+","+counter);
             ++tj.cursor;
         };
         if( counter>0 )return counter;
