@@ -34,7 +34,7 @@ System.err.print("TJ~33 eset: ");
         error = e;
         errat = cursor;
         dl.whatHappened();
-//Thread.dumpStack();
+Thread.dumpStack();
         System.exit(0);  // zero because the issue is in the tiny-c code. TC is ok.
     }
 

@@ -124,6 +124,7 @@ public class ST extends PT {
             lit(xsemi);
         }
         else {
+System.err.println("ST~127, progAt: "+tj.prog.charAt(tj.cursor));
             tj.eset(tj.STATERR);
         }
     }
@@ -199,26 +200,33 @@ public class ST extends PT {
      *      Parses one variable. Makes allocation and symbol entry.
      */
     public void varAlloc(TJ.Type type, Stuff vpassed) {
+//System.err.println("ST~203, varAlloc, ");
         boolean isArray=false;
         int alen=1;
-        if( !exp.symName() ) {             /*defines fname,lname. True is match.*/
+        if( !exp.symName() ) {         /*defines fname,lname. True is match.*/
             tj.eset(tj.SYMERR);
             return;
         }
-        tj.cursor=tj.lname+1;
+//System.err.println("ST~209, varAlloc, symName parsed");
+        tj.cursor=tj.lname;
         if( lit("(") ) {
+//System.err.println("ST~213, varAlloc, ( parsed");
             isArray = true;   /* distance to data (was vclass) */
             int fn=tj.fname; /* localize globals that asgn() may change */
             int ln=tj.lname;
             if( exp.asgn() ) alen=stk.toptoi()+1;  /* dimension */
+//System.err.println("ST~218, varAlloc, 0 parsed");
             tj.fname=fn;               /* restore the globals */
             tj.lname=ln;
             int x = mustFind(tj.cursor,tj.cursor+5,')',tj.RPARERR);
             if(x>0)tj.cursor = x+1;
         } else {
+//System.err.println("ST~224, varAlloc, NOT (  --->> "
+//	+tj.prog.substring(tj.cursor-19,tj.cursor+19));
             isArray = false;
             alen = 1;
         }
+//System.err.println("ST~2, varAlloc, about to call new Var(..)");
         new Var(isArray, type, alen, vpassed);
     }
 }

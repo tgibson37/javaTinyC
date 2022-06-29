@@ -81,6 +81,13 @@ public class PT {
         tj.lname = temp;
         return true;  /* good, fname and lname defined */
     }
+    /* dump the most recently parsed symbol (or constant) 
+     */
+    void dumpSym(){
+    	System.err.print("\n    PT~85: dumpSym: -->"
+    		+tj.prog.substring(tj.fname,tj.lname));
+    	System.err.println("<--");
+    }
 
     /*	return true if symname matches arg, no state change
      */

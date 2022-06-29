@@ -31,20 +31,23 @@ public class Expr extends PT {
  * up local with the passed value.
  */ 
 	void setArg( TJ.Type type, int arg ) {
-/*		Stuff vp = stk.peek(arg);       // passed Stuff
-		boolean isarray = vp.isArray;
-        boolean lvalue = vp.lvalue;
-        int stacktype = vp.type;
+		Stuff valPassed = stk.peek(arg);
+//System.err.println("Expr~35 setArg: "+valPassed);
+/*		boolean isarray = valPassed.isArray;
+        boolean lvalue = valPassed.lvalue;
+        TJ.Type stacktype = valPassed.type;
         if( lvalue) {
-            where = vp.up;
+            where = valPassed.up;
             if( isarray ) { 
-                vp.up = *((char**)(*arg).value.up);
+                valPassed.up = *((char**)(*arg).value.up);
+                 
             } else
-            if( stacktype==Int ) vp.ui = get_int(where);
-            else if( stacktype==Char) vp.ui = get_char(where);
+            if( stacktype==Int ) valPassed.ui = get_int(where);
+            else if( stacktype==Char) valPassed.ui = get_char(where);
         }
-        varAlloc( type, vp);
 */
+        stmt.varAlloc( type, valPassed);
+
     }
 
     public void enter(int where) {   // c code tc~307
@@ -63,17 +66,23 @@ public class Expr extends PT {
                           );
         if ( haveArgs ) {
             do {
+//trace=true;
+//System.err.println("Expr~69, haveArgs, error"+tj.error);
+//System.err.println("Expr~70, nargs,arg,stk.size: "+nargs+" "+arg+" "+stk.size());
+//System.err.println("== cursor+-9 ==>>"+tj.prog.substring(tj.cursor-9,tj.cursor+9)+"<<--");
                 if(tj.error!=0)return;
                 if( asgn()) ++nargs;
                 else break;  // break on error
-            } while( lit(xcomma) );
+if(trace)System.err.println("Expr~75, parsed an arg");
+			} while( lit(xcomma) );
         }
+if(trace)System.err.println("Expr~77 AFTER args parsed: nargs,arg,stk.size: "+nargs+" "+arg+" "+stk.size());
         if(tj.error!=0)return;
         lit(xrpar);   // optional )
         rem();
         if(where==0) {
             if(stk.size()>0) {
-//                        machinecall( nargs );
+                        machinecall( nargs );
 //                        varargs=0;
             }
             else tj.eset(tj.MCERR);
@@ -92,16 +101,19 @@ public class Expr extends PT {
 				  do {
 					  setArg(TJ.Type.INT, arg);
 					  arg++;
+//System.err.println("Expr~104, int setArg");
 				  } while(lit(xcomma));
 				  lit(xsemi);    // optional
 			}
 			else if ( lit(xchar)) {
-System.err.println("Expr~100, char arg");
+//System.err.println("Expr~106, char arg");
+if(trace)System.err.println("Expr~109, nargs,arg,stk.size: "+nargs+" "+arg+" "+stk.size());
 				do {
 					setArg(TJ.Type.CHAR, arg);
 					arg++;
 				} while(lit(xcomma));
 				lit(xsemi);
+//System.err.println("Expr~108, char arg");
 		   }
 //		   else if ( lit(xvarargs) ){
 //			   varargs=nargs+1;
@@ -113,6 +125,7 @@ System.err.println("Expr~100, char arg");
 	   }
 // assure number of args == number of parms, clean up...
 	   if(varargs==0) {
+//System.err.println("Expr~125, nargs,arg,stk.size: "+nargs+" "+arg+" "+stk.size());
 		   if(arg != stk.size()) {
 				tj.cursor=localcurs;
 				tj.stcurs=localstcurs;
@@ -124,11 +137,15 @@ System.err.println("Expr~100, char arg");
 			}
 		}
 // */
+//System.err.println("Expr~131, error: "+tj.error);
+//if(trace)System.err.println("Expr~120, nargs,arg,stk.size: "+nargs+" "+arg+" "+stk.size());
+//System.err.println("Expr~141, nargs,arg,stk.size: "+nargs+" "+arg+" "+stk.size());
 		if(tj.error==0)stmt.st();     //  <<-- execute fcn's body
 		else {
 			dl.whatHappened();
 			System.exit(1);
 		}
+//System.err.println("Expr~100, char arg");
 		if(!tj.leave)pushzero();
 		tj.leave=false;
 		tj.cursor=localcurs;
@@ -139,7 +156,7 @@ System.err.println("Expr~100, char arg");
 
 
 
-    /* An ASGN is a reln or an lvalue = asgn. Note that reln can match an lvalue.
+    /* An ASGN is a reln or an lvalue = asgn.
      */
     public boolean asgn() {
         if(reln()) {
@@ -148,7 +165,8 @@ System.err.println("Expr~100, char arg");
                 //			if(error==0)eq();      actions covered for now
             }
         }
-        return tj.error!=0;
+//System.err.println("Expr~168, returning from asgn, error: "+tj.error);
+        return tj.error==0;
     }
 
     private int topdiff() {
@@ -359,11 +377,11 @@ System.err.println("Expr~100, char arg");
         }
     }
 
-//  good java below
     public Stuff konst() {
-        int x;  //index into prog
+		int x;  //index into prog
         rem();
         char c = tj.prog.charAt(tj.cursor);
+if(trace)System.err.println("Expr~378, cursor-->"+c);
         if( c=='+' || c=='-' || (c>='0'&&c<='9') ) {
             tj.fname = tj.cursor;
             do {
@@ -375,17 +393,23 @@ System.err.println("Expr~100, char arg");
             int i = Integer.parseInt(s);
             return new Ival(i);
         } else if(lit("\"")) {
+if(trace)System.err.println("Expr~393");
             tj.fname=tj.cursor;
             x = findEOS(tj.fname);
             if( x>0 ) {
                 /* set lname = last char, cursor = lname+2 (past the quote) */
                 tj.lname = x; /*at the quote */
                 tj.cursor = x+1; /*after the quote */
+if(trace)System.err.println("Expr~399, x: should be quote: "
+	+x+"-->"+tj.prog.charAt(x));
             }
             else {
+if(trace)System.err.println("Expr~402");
                 tj.eset(tj.CURSERR);
                 return null;
             }
+System.err.println("Expr~411 -->"
+	+tj.prog.substring(tj.fname,tj.lname)+"<--");
             return new Sval(tj.prog.substring(tj.fname,tj.lname));
 
         } else if(lit("\'")) {
