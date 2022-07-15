@@ -60,9 +60,9 @@ Thread.dumpStack();
 // leave and brake are restored to false when their respective action is complete.
 
     /* type flags */
-    int CHAR = 0;
-    int INT  = 1;
-    int STRING = 2;
+    static int CHAR = 0;
+    static int INT  = 1;
+    static int STRING = 2;
 
     /* error tags */
     int STATERR =      1;

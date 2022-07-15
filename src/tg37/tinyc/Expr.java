@@ -66,14 +66,15 @@ public class Expr extends PT {
                           );
         if ( haveArgs ) {
             do {
-//trace=true;
+trace=true;
 //System.err.println("Expr~69, haveArgs, error"+tj.error);
 //System.err.println("Expr~70, nargs,arg,stk.size: "+nargs+" "+arg+" "+stk.size());
 //System.err.println("== cursor+-9 ==>>"+tj.prog.substring(tj.cursor-9,tj.cursor+9)+"<<--");
                 if(tj.error!=0)return;
                 if( asgn()) ++nargs;
                 else break;  // break on error
-if(trace)System.err.println("Expr~75, parsed an arg");
+if(trace)System.err.println("Expr~75, parsed an arg, nargs: "+nargs);
+if(trace)System.err.println("   cursor-->"+tj.prog.substring(tj.cursor,tj.cursor+9));
 			} while( lit(xcomma) );
         }
 if(trace)System.err.println("Expr~77 AFTER args parsed: nargs,arg,stk.size: "+nargs+" "+arg+" "+stk.size());
@@ -82,7 +83,7 @@ if(trace)System.err.println("Expr~77 AFTER args parsed: nargs,arg,stk.size: "+na
         rem();
         if(where==0) {
             if(stk.size()>0) {
-                        machinecall( nargs );
+                        MC.machinecall( nargs );
 //                        varargs=0;
             }
             else tj.eset(tj.MCERR);
@@ -101,12 +102,12 @@ if(trace)System.err.println("Expr~77 AFTER args parsed: nargs,arg,stk.size: "+na
 				  do {
 					  setArg(TJ.Type.INT, arg);
 					  arg++;
-//System.err.println("Expr~104, int setArg");
+System.err.println("Expr~104, int setArg");
 				  } while(lit(xcomma));
 				  lit(xsemi);    // optional
 			}
 			else if ( lit(xchar)) {
-//System.err.println("Expr~106, char arg");
+System.err.println("Expr~106, char arg");
 if(trace)System.err.println("Expr~109, nargs,arg,stk.size: "+nargs+" "+arg+" "+stk.size());
 				do {
 					setArg(TJ.Type.CHAR, arg);
@@ -315,59 +316,66 @@ if(trace)System.err.println("Expr~109, nargs,arg,stk.size: "+nargs+" "+arg+" "+s
         }
 
         Stuff kon=konst();
-        if( kon!=null ) stk.pushst(kon);
+        if( kon!=null ) stk.pushStuff(kon);
 
         else if( symName() ) {
+        	int integer, character;
+        	Boolean isArray;
             int where, len, obsize, stuff;
+            TJ.Type type;
             tj.cursor = tj.lname+1;
             if( symNameIs("MC") ) {
                 enter(0);
                 return;
             } else {
-//                Vartab vt = Vartab.getInstance();
                 Var v = vt.addrval();  /* looks up symbol */
                 if( v==null ) {
                     tj.eset(tj.SYMERR);    /* not declared */
                     return;
                 }
-                /*
-                				int integer =  v.value.ui;
-                				int character = v.value.uc;
-                				int class=v.dtod;
-                				int type=v.type;
-                				int obsize = typeToSize(class,type);
-                				int len=v.len;
-                */
+
+				integer =  v.value.getInt();
+//				character = v.value.uc;
+				isArray=v.isArray;
+				type=v.type;
+				obsize = typeToSize(isArray,type);
+				len=v.len;
+
                 if( v.value.isFcn() ) {
+System.err.println("Expr~343 is function");
                     where = v.value.getInt();
                     enter(where);
                 }
                 else {   /* is var name */
+System.err.println("Expr~347 is var");
+System.err.println("   cursor-->"+tj.prog.substring(tj.cursor,tj.cursor+9));
                     if( v.isArray ) {
-                        /*
-                        					// reduce the class and recompute obsize
-                        					obsize = typeToSize(--class,type);
-                        					// increment where by subscript*obsize
-                        					asgn(); if( error!=0 )return;
-                        					lit(xrpar);
-                        					int subscript = toptoi();
-                        					if(len-1)if( subscript<0 || subscript>=len )eset(RANGERR);
-                        					where += subscript * obsize;
-                        					foo.up = where;
-                        					pushst( class, 'L', type, &foo);
-                        					return;
-                        */
+if(trace)System.err.println("Expr~350 is array");
+/*
+						// reduce the class and recompute obsize
+						obsize = typeToSize(--class,type);
+						// increment where by subscript*obsize
+						asgn(); if( error!=0 )return;
+						lit(xrpar);
+						int subscript = toptoi();
+						if(len-1)if( subscript<0 || subscript>=len )eset(RANGERR);
+						where += subscript * obsize;
+						foo.up = where;
+						pushst( class, 'L', type, &foo);
+						return;
+*/
                     } else {
-                        /*
-                        				// is simple. Must push as 'L', &storagePlace.
-                        					if(class==1){
-                        						foo.up = &((*v).value.up);
-                        					}
-                        					else{
-                        						foo.up = where;
-                        					}
-                        					pushst( class, 'L', type, &foo);
-                        */
+if(trace)System.err.println("Expr~365 is simple");
+				// is simple. Must push as 'L', &storagePlace.
+						if(v.isArray){
+	//						foo.up = &((*v).value.up);
+						}
+						else{
+	//						foo.up = where;
+						}
+//						pushst( class, 'L', type, &foo);
+if(trace)System.err.println("Expr~372:   <<== pushst");  // didn't get here
+
                     }
                 }
             }
@@ -381,7 +389,7 @@ if(trace)System.err.println("Expr~109, nargs,arg,stk.size: "+nargs+" "+arg+" "+s
 		int x;  //index into prog
         rem();
         char c = tj.prog.charAt(tj.cursor);
-if(trace)System.err.println("Expr~378, cursor-->"+c);
+if(trace)System.err.println("Expr~390(konst), cursor-->"+c);
         if( c=='+' || c=='-' || (c>='0'&&c<='9') ) {
             tj.fname = tj.cursor;
             do {
@@ -393,22 +401,22 @@ if(trace)System.err.println("Expr~378, cursor-->"+c);
             int i = Integer.parseInt(s);
             return new Ival(i);
         } else if(lit("\"")) {
-if(trace)System.err.println("Expr~393");
+if(trace)System.err.println("Expr~402");
             tj.fname=tj.cursor;
             x = findEOS(tj.fname);
             if( x>0 ) {
                 /* set lname = last char, cursor = lname+2 (past the quote) */
                 tj.lname = x; /*at the quote */
                 tj.cursor = x+1; /*after the quote */
-if(trace)System.err.println("Expr~399, x: should be quote: "
+if(trace)System.err.println("Expr~409, x: should be quote: "
 	+x+"-->"+tj.prog.charAt(x));
             }
             else {
-if(trace)System.err.println("Expr~402");
+if(trace)System.err.println("Expr~413");
                 tj.eset(tj.CURSERR);
                 return null;
             }
-System.err.println("Expr~411 -->"
+System.err.println("Expr~417 -->"
 	+tj.prog.substring(tj.fname,tj.lname)+"<--");
             return new Sval(tj.prog.substring(tj.fname,tj.lname));
 
@@ -428,6 +436,14 @@ System.err.println("Expr~411 -->"
 
         } else return null;  /* no match */
     }
+
+/* stored size of one datum */
+	int typeToSize( Boolean isArray, TJ.Type type ) {
+			if(type==TJ.Type.CHAR)return 1;
+			else if(type==TJ.Type.INT)return 4;
+			else tj.eset(tj.TYPEERR);
+			return 0;
+	}
 
 // Unit tests...
     public static void main(String args[]) {

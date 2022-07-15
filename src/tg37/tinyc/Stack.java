@@ -18,9 +18,14 @@ public class Stack {
         }
         return instance;
     }
-    
+    /* used by machinecall 
+    public Stuff[] argsToArray(int nargs){
+System.err.println("Stack~23: CODE LATER "+nargs);
+return null;
+    }
+*/
     /* basic pusher */
-    public void pushst(Stuff stuff) {
+    public void pushStuff(Stuff stuff) {
         stack.push(stuff);
     }
     /* basic popper, entry stays accessible until pushed over */
@@ -67,12 +72,12 @@ public class Stack {
 
     /* push an int */
     public void pushk(int datum) {
-        pushst( new Ival(datum) );
+        pushStuff( new Ival(datum) );
     }
 
     /* push an int as a class 1 */
     public void pushPtr(int datum) {
-        pushst( new Pval(datum) );
+        pushStuff( new Pval(datum) );
     }
 
     /* these two used by RELN */
@@ -90,7 +95,7 @@ public class Stack {
 // tests...
 /*
 	private static void kase(Stuff s, String sb, Stack stk) {
-        stk.pushst(s);
+        stk.pushStuff(s);
         System.out.print("Should be:"+sb);
         int x = stk.toptoi();
         System.out.println(": "+x);
