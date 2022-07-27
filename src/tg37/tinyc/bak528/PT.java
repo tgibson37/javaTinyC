@@ -6,46 +6,48 @@
 package tg37.tinyc;
 
 public class PT {
-	public static TJ tj;
-	public PT(){ tj = TC.tj; }
-		
-    /************** literals **************/
-    static String xif = "if";
-    static String xelse = "else";
-    static String xint = "int";
-    static String xchar = "char";
-    static String xwhile = "while";
-    static String xreturn = "return";
-    static String xbreak = "break";
-    static String xendlib = "endlibrary";
-    static String xr = "r";
-    static String xg = "g";
-    static String xlb = "[";
-    static String xrb = "]";
-    static String xlpar = "(";
-    static String xrpar = ")";
-    static String xcomma = ",";
-    static String newline = "\n";
-    static String xcmnt = "/*";
-    static String xcmnt2 = "//";
-    static String xstar = "*";
-    static String xsemi = ";";
-    static String xpcnt = "%";
-    static String xslash = "/";
-    static String xplus = "+";
-    static String xminus = "-";
-    static String xlt = "<";
-    static String xgt = ">";
-    static String xnoteq = "!=";
-    static String xeqeq = "==";
-    static String xeq = "=";
-    static String xge = ">=";
-    static String xle = "<=";
-    static String xnl = "\n";
-    static String xvarargs = "...";
-    static String xquote = "\"";
+	TJ tj;
+    public PT(TJ tj) {
+    	this.tj = tj;
+    }
 
-//    static int fname,lname;
+    /************** literals **************/
+    final String xif = "if";
+    final String xelse = "else";
+    final String xint = "int";
+    final String xchar = "char";
+    final String xwhile = "while";
+    final String xreturn = "return";
+    final String xbreak = "break";
+    final String xendlib = "endlibrary";
+    final String xr = "r";
+    final String xg = "g";
+    final String xlb = "[";
+    final String xrb = "]";
+    final String xlpar = "(";
+    final String xrpar = ")";
+    final String xcomma = ",";
+    final String newline = "\n";
+    final String xcmnt = "/*";
+    final String xcmnt2 = "//";
+    final String xstar = "*";
+    final String xsemi = ";";
+    final String xpcnt = "%";
+    final String xslash = "/";
+    final String xplus = "+";
+    final String xminus = "-";
+    final String xlt = "<";
+    final String xgt = ">";
+    final String xnoteq = "!=";
+    final String xeqeq = "==";
+    final String xeq = "=";
+    final String xge = ">=";
+    final String xle = "<=";
+    final String xnl = "\n";
+    final String xvarargs = "...";
+    final String xquote = "\"";
+
+    int fname,lname;
 
     /* Bump cursor over whitespace. Then return true on match and advance
        cursor beyond the literal else false and do not advance cursor
@@ -75,44 +77,22 @@ public class PT {
         char c = tj.prog.charAt(tj.cursor);
         while( c == ' ' || c == '\t' ) c = tj.prog.charAt(++tj.cursor);
         temp=tj.cursor;
-        if( Character.isLetter(c) || c=='_') tj.fname = temp;
+        if( Character.isLetter(c) || c=='_') fname = temp;
         else return false;
         while( Character.isLetterOrDigit(c=tj.prog.charAt(++temp)) || c=='_') ;
-        tj.lname = temp;
+        lname = temp;
         return true;  /* good, fname and lname defined */
     }
-    /* dump the most recently parsed symbol (or constant) 
-     */
-    void dumpSym(String msg){
-    	System.out.print(msg + tj.prog.substring(tj.fname,tj.lname));
-    }
-    void dumpLine(String msg){
-    	System.out.print(msg);
-System.err.println("PT~91, dumpLine() not coded yet");
-    }
-    
-    /* dump the current line number. 
-    	Ref: https://www.recitalsoftware.com/blogs/152-howto-use-file-and-line-in-java-programs
-     */
-	public static void dumpSourceLine(String msg)
-	{
-		System.out.print("\n"+msg);
-		System.out.print(" at " + 
-					   " "+new Throwable().getStackTrace()[1].getFileName() +
-//					   " "+new Throwable().getStackTrace()[1].getClassName() +
-					   " "+new Throwable().getStackTrace()[1].getMethodName() +
-				  " line "+new Throwable().getStackTrace()[1].getLineNumber());
-	}
+
     /*	return true if symname matches arg, no state change
      */
     boolean symNameIs(String name) {
         String tok = tj.prog.substring(tj.fname, tj.lname);
-//System.err.println("PT~96 symNameIs: name,tok: "+name+" "+tok+"<--");
         return tok.equals(name);
     }
 
     /*	State is not changed by find or mustFind. Returned value is
-    	sole purpose of find.
+    	sole purpose of find. That plus setting err for mustFind.
      */
     int find( int from, int upto, char c) {
         int x = from;
@@ -124,7 +104,7 @@ System.err.println("PT~91, dumpLine() not coded yet");
         return x<upto ? x : 0;
     }
 
-    /*	Same as find but sets err on no match.
+    /*	same as find but sets err on no match
      */
     int mustFind( int from, int upto, char c, int err ) {
         int x = find(from, upto, c);
@@ -172,4 +152,11 @@ System.err.println("PT~91, dumpLine() not coded yet");
         }
         return;
     }
+    /*
+    	public void main(String args[]) {
+    prog="   foo   ";
+    		symName();
+    		System.out.println("PT~154 first,last = "+fname+", "+lname);
+    	}
+     */
 }

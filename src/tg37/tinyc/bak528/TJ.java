@@ -12,57 +12,38 @@ public class TJ {
 	public Dialog dl;
 	public PT pt;
     public enum Type {CHAR, INT, FCN, STR };
-    
-    private static TJ instance;
-    private TJ(){
-    	exp=Expr.getInstance();
-    	stk=Stack.getInstance();
-    	stmt=ST.getInstance();
-    	vt=Vartab.getInstance();
-    	dl=Dialog.getInstance();
-//    	pt=PT.getInstance();
-    }
-    public static synchronized TJ getInstance(){
-        if(instance == null){
-            instance = new TJ();
-        }
-        return instance;
-    }
 
     public void eset(int e) {
-System.err.print("TJ~33 eset: ");
         error = e;
         errat = cursor;
-        dl.whatHappened();
-Thread.dumpStack();
-        System.exit(0);  // zero because the issue is in the tiny-c code. TC is ok.
     }
 
     /* Global data */
-    static String prog;   // tc program text
-    static int  apr, endapp, prused, EPR, lpr;
+    String prog;   // tc program text
+    int lpr, apr, endapp, prused, EPR;
     /* EPR is end of program SPACE.
-     *      pr starts with startSeed, then libs, then app
+     *      pr starts with startSeed, then libs, then app, then values
      *      lpr is start of libraries
      *      apr is start of application program
      *      endapp is end of ALL program text,
+     *      endapp+10 start of value space
      *      prused includes values, moves up/down with fcn entry/leaving
      *      EPR is pointer to last byte of pr array
      */
-    static int error;    // from list below. ZERO is good.
-    static int errat;	 // where error occurred
-    static boolean quiet;
-    static int cursor;   // index into pr
-    static int stcurs;	 // current statement
-    static int fname,lname;  // most recently matched symbol
-    static boolean leave;	// set true by return statement
-    static boolean brake;	// set true by break statement
+    int error;    // from list below. ZERO is good.
+    int errat;	 // where error occurred
+    boolean quiet;
+    int cursor;   // index into pr
+    int stcurs;	 // current statement
+    int fname,lname;  // most recently matched symbol
+    boolean leave;	// set true by return statement
+    boolean brake;	// set true by break statement
 // leave and brake are restored to false when their respective action is complete.
 
     /* type flags */
-    static int CHAR = 0;
-    static int INT  = 1;
-    static int STRING = 2;
+    final int CHAR = 0;
+    int INT  = 1;
+    int STRING = 2;
 
     /* error tags */
     int STATERR =      1;

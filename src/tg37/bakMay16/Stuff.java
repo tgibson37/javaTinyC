@@ -2,27 +2,25 @@
 	It is used on the Stack, and the Vartab. Derivatives
 	hold values of type: int, char, string.
 NEED: support for vars, and lvalue. Below constructors do just constants.
-NEED: lvalue service that returns an actual value Stuff. Expr~20.
 	Basically Stuff defines what goes on the Stack.
 */
 package tg37.tinyc;
 
-abstract public class Stuff {
-    public TJ.Type type;          // CHAR, INT, FUNCTION
+abstract public class Stuff extends TJ {
+    enum Type {CHAR, INT, FCN, STR }
+
+    public Type type;          // CHAR, INT, FUNCTION
     public int len;            // 1 for datum, else length of array
     public boolean lvalue;
     public boolean isArray;    // used to be 'class,' 0 for datum 1 for array
-	static TJ tj;
 
-	Stuff(TJ.Type t, int l, boolean lv, boolean ia ) {
-		tj = TJ.getInstance();
-		type = t;
+    Stuff(Type t, int l, boolean lv, boolean ia ) {
+        type = t;
         len = l;
         lvalue = lv;
         isArray = ia;
     }
     abstract public int getInt();
-    public void dump(String msg){ System.out.print(msg+this.toString()); }
     public char getType() {   // 'F', 'I' ,'C', or 'S'
         String t = this.getClass().toString();
         return t.charAt( t.length()-4 );
@@ -48,14 +46,13 @@ abstract public class Stuff {
 //System.err.println("Stuff~42, isFcn: " + t + (t=='P') );
         return t=='P';
     }
-    
-    public static Ival createIval(int i) {
+    static Ival createIval(int i) {
         return new Ival(i);
     }
-    public static Cval createCval(char c) {
+    static Cval createCval(char c) {
         return new Cval(c);
     }
-    public static Fvar createFvar(int cursor) {
+    static Fvar createFvar(int cursor) {
         return new Fvar(cursor);
     }
 
@@ -102,7 +99,7 @@ abstract public class Stuff {
 class Sval extends Stuff {
     String val;
     Sval(String v) {
-        super(TJ.Type.CHAR, v.length(), false, false);
+        super(Type.CHAR,v.length(),false,false);
         val=v;
     }
     public String toString() {
@@ -115,18 +112,18 @@ class Sval extends Stuff {
         return new Sval(val);
     }
     public int getInt() {
-        tj.eset(tj.TYPEERR);
+        eset(TYPEERR);
         return -999999;
     }
 }
 class Cval extends Stuff {
     char val;
     Cval(char v, int len) {
-        super(TJ.Type.CHAR,len,true,false);
+        super(Type.CHAR,len,true,false);
         val=v;
     }
     Cval(int v) {
-        super(TJ.Type.CHAR, 1, true, false);
+        super(Type.CHAR, 1, true, false);
         val=(char)v;
     }
     public String toString() {
@@ -142,11 +139,11 @@ class Cval extends Stuff {
 class Ival extends Stuff {
     int val;
     Ival(int v, int len) {
-        super(TJ.Type.INT,len,true,false);
+        super(Type.INT,len,true,false);
         val=v;
     }
     Ival(int v) {
-        super(TJ.Type.INT, 1, true, false);
+        super(Type.INT, 1, true, false);
         val=v;
     }
     public String toString() {
@@ -165,7 +162,7 @@ class Ival extends Stuff {
 class Pval extends Stuff {
     int kursor;
     Pval(int v) {
-        super(TJ.Type.INT,1,true,true);
+        super(Type.INT,1,true,true);
         kursor=v;
         isArray=true;
     }
@@ -183,7 +180,7 @@ class Pval extends Stuff {
 class Fvar extends Stuff {
     int kursor;
     Fvar(int cursor) {
-        super(TJ.Type.FCN,0,false,false);
+        super(Type.FCN,0,false,false);
         kursor=cursor;
     }
     String getStr() {

@@ -1,0 +1,70 @@
+How lvalues work
+----------------
+Stuff has a datum and descriptive data: type,len,lvalue,isArray
+---
+$ ./gj lvalue
+src/tg37/tinyc/Expr.java:18:        int lvalue = (*arg).lvalue;
+src/tg37/tinyc/Expr.java:20:        if( lvalue=='L') {
+src/tg37/tinyc/Expr.java:141:    /* An ASGN is a reln or an lvalue = asgn. Note that reln can match an lvalue.
+src/tg37/tinyc/Stack.java:47:            if(top.lvalue) {
+src/tg37/tinyc/Stack.java:55:            if(top.lvalue) {
+src/tg37/tinyc/Stuff.java:15:    public boolean lvalue;
+src/tg37/tinyc/Stuff.java:21:        lvalue = lv;
+src/tg37/tinyc/Stuff.java:97:	Type t, int len, boolean lvalue, boolean isArray   <<-- constructor parms
+---
+In C version, lvalue was a pointer to its value storage place. In J version, the
+value is part of Stuff: subclasses for each type. In effect every Stuff is an
+lvalue. Do we still need that flag? The real issue is = operator...
+	x = 17;
+x is an lvalue, 17 is not. On the stack x has its value storage. How is 17 put
+onto the stack? konst does the parsing, Expr~374. It wraps it in an Xval
+(X=ICS), i.e. a Stuff. But it is a constant. So lvalue==false. To resolve a
+Stuff, just get its value, being careful to respect type.
+	src/tg37/tinyc/Stuff.java:11:    enum Type {CHAR, INT, FCN, STR }
+	Stuff s = something
+		switch(s.type) {
+		  case CHAR:
+		  	char c = (char)s.getInt();
+			break;
+		  case STR:
+		  	String s = s.getStr();
+		  	break;
+		  case FCN:    // subscript in pr
+		  case INT:
+		  	int i = s.getInt();
+			break;
+		}
+In reality the above code is useless, because after execution what did it do?
+But it illustrates all cases. Real code starts with an expectation of what is
+needed...
+	int x;  ...
+	x = 17;
+Parsing x, the action is look it up, it is an integer variable and an lvalue.
+Wrap it in an Ival and push. Parse =, action is parse and push expression, then
+call eq(). Expecting an expression. Parse 17, it IS an expression. Wrap it in an
+Ival and push. STATUS is stack has two entries and pending action: eq(). eq is
+called. DONE. But what does eq do???
+	eq: pops the 17 Stuff. Its an actual. pop the x Stuff. Its an lvalue.
+Retrieve the 17 value, set x's value to the retrieved 17 Stuff's value. DONE.
+Now consider...
+	int x = y;
+Parse the y. The lookup returns its Stuff from some vartab. It is an lvalue,
+but its value is in y's Stuff. Pop the x Stuff. Proceed as above: set x's value
+to the retrieved y's value. Same code completes the assignment for both cases.
+No need to "resolve" an lvalue, BUT NEED to assure the target of an assign IS an
+lvalue, not a constant. But what if we trusted the code, and didn't check the
+left side IS an lvalue. Then conisider the consequeses of...
+	10 = 7;    // nothing bad happens. In essence nothing happens.
+	or    x = 10 = 7;    // x becomes 7
+Constants become lvalues, but NOT in the text of pr. Only on the stack.
+	MY ISSUE at expr~20, setArg(): is code ~19..26 needed? What does it do.
+setArg creates a local ~27 varAlloc();
+	
+
+
+
+
+
+
+
+

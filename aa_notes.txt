@@ -1,0 +1,2994 @@
+New goal: Use java to rebuild tiny-obj into tiny-j
+22 Jan 2022
+---
+14 toc dot-c files
+	src/debug.c   src/facsym.c    src/link.c         src/stack.c    src/var.c
+	src/dialog.c  src/factor.c    src/machineCall.c  src/toc.c      src/xray.c
+	src/expr.c    src/fileRead.c  src/platform.c     src/tocMain.c
+tests in test* dirs and files
+	green == bash scripts
+	blue  == dirs
+tiny-c/test.c may be better study for order of coding
+test number:
+	1..4: newvar, dumpVarTab
+	5: symname, dumpName
+	6: _varAlloc, dumpVarTab
+	7: _lit
+	8: _decl
+	9: iProperty  [ReadFile, reads property file]
+[to be continued, 77 tests]
+==============	
+Studying var.c. Goal is understanding needed publics.
+	6:   void newfun()
+	25:  void fundone()
+	78:  void newvar(class,type,len,passed)   <<== constructor
+	158: var* addrval()
+privates:
+	_copyArgValue, _allocSpace, _canon, canon, _addrval, _addrval_all
+5 dumps:
+	165..211  [Val, funEntry, Fun, Var, VarTab]
+==============	
+Probably not needed: FileRead, debug
+==============
+Studying stack.c
+	38:   void pushst(,,,)
+	52:   stackentry* popst()
+	64:   int topdiff()   [used only by reln, tc~474]
+	72:   int toptoi()
+	106:  void pushk(datum)
+	114:  void pushPtr(datum)
+	121:  void pushone()
+	124:  void pushzero()
+privates:
+	stuffCopy (one use)
+4 dumps:
+	3..33 [stackEntry, stack, popTop, top, ]
+NOTICE stack always pops int
+----------------------------------
+
+Sun, Jan 23
+ISSUE: how to implement stuff. It must carry a typeless. C uses a union. There
+is no such thing in java. And I bet you cannot do a pointer. It would have
+to be a subscript into an array. How to implement...
+	char foo(99), ptr(0); ptr=foo      ???
+This issue may be fatal to the goal.
+Maybe tj can have references instead of pointers. ptr(0) syntax is class 1
+in tc and toc. Actually tc pointers ARE references. They have type, size, len.
+How to implement stuff ??? What goes onto a stack? You pop a stack and then
+examine what you got, type,size,len,class,value. value is the bugger.
+	Maybe stuff has all except value, and value is a subclass. HMM!
+Datum would be type stuff, and usage of a datum would dig out its value by 
+downcasting. Better implement this first as it may be the critical issue to
+solve. Do var and stack first. [History repeats itself.]
+---
+Issue: files. tc.c was separated into a few files in tiny-obj. What are they?
+$ ls src/*.c
+	src/debug.c   src/facsym.c    src/link.c         src/stack.c    src/var.c
+	src/dialog.c  src/factor.c    src/machineCall.c  src/toc.c      src/xray.c
+	src/expr.c    src/fileRead.c  src/platform.c     src/tocMain.c
+This seems a better structure, especially for public classes. One possibility is
+to use tiny-obj as our code source for java, maybe leaving out the object 
+extensions. Probably easier is to split tc.c into above. tiny-c has 9 dot-c 
+files, (omiting 2 test codes.) Above is 14, but it includes enhancements like xray.
+Difference:  facsym, link, factor, xray, expr, platform...
+		toc					tc			sizes(K)
+	src/debug.c			.debug
+	src/facsym.c    	.				 2
+	src/link.c         	.				 9
+	src/stack.c    		.stack
+	src/var.c			.var
+	src/dialog.c  		.dialog
+	src/factor.c    	.				 9
+	src/machineCall.c  	.machineCall
+	src/toc.c      		.tc				10, 23
+	src/xray.c			.
+	src/expr.c    		.				 5
+	src/fileRead.c  	.FileRead
+	src/platform.c     	.
+	src/tocMain.c		.tcMain
+xray has no comments. What is it?
+	Its a debugging aid, an extension to MC 0. DO LATER, maybe.
+---
+toc split   -->  facsym, link, factor, expr
+=======
+Plan tc:
+	Use tc code, cp from tiny-c read-only
+	split tc to match the toc split into *.java files
+	define stuff & descendants, ival, cval, and maybe sval for strings.
+	Optionally put value there, too.
+=============
+var vs stackentry...
+	struct stackentry { 
+		int class; int lvalue; Type type; 
+		union stuff value; 
+	};
+	struct var { 
+		char name[VLEN+1]; int class; Type type; int len; int brkpt;
+		union stuff value; 
+	};
+var reflects what is in the declaration. StackEntry what is
+needed for an expression. Notice var has value, which may be
+a C pointer to a string. var.value points into value space. 
+For class 1 char it	points into the tc program text.
+	Can these two decls be made cleaner. In java cannot coerce ints <-> ptrs. 
+Use subclasses for value intead of union. For now focus on stack version, and
+value is in each subclass Including ref to text. 
+---------------------
+
+Tue Jan 25
+Working on Stuff.java. char and int OK, string probably needs change when its
+role is better understood. Did git init, and committed.
+	Cval/Ival classes have toInt(), Sval has toString().
+	java Stuff  ->  "7 81 foo-bar"  [3 lines]
+java String is immutable. StringBuffer is not. Which should I use for quoted
+strings? The tc code in String means cannot change trailing quote to null, but
+must extract the string. The former was always a kluge. Hmm.
+---
+Next goal: stack
+---------------------
+
+Wed Jan 26
+setting CLASSPATH...
+	As root:  $ . ./setClassPath   << my bash script
+			$ echo $CLASSPATH
+			~/Projects/tiny-j/classes
+---
+From: https://stackoverflow.com/questions/45309470/how-to-set-environment-variable-classpath-and-noclassdeffounderror-on-linux
+    javac ABMain.java
+    mv AAA.class ./sub/AAA.class
+    mv BBB.class ./sub/BBB.class
+    java -cp ./sub:. ABMain
+The idea seems to be: 
+	subordinate stuff move to ./sub, (I would use ./classes)
+	main class stays in tiny-j, and is launched from there
+	the -cp means class path with subordinate. NOTE the :.
+	I would use:    java -cp ./classes:. Stuff
+		and eventually Stack and ultimately tj
+	CLASSPATH env var seems to not be involved at all.
+---
+STATUS of classpath nightmare...
+	export CLASSPATH=/home/.../tiny-j/classes     WORKS at user level
+	echo $CLASSPATH                               confirms
+	erase all *.class files
+	javac *.java                         CLASSPATH ignored
+	mv *.class classes                   all including Stuff.class
+	java Stuff                           runs fine
+javac ignores the CLASSPATH, java uses it OK.
+How to avoid the mv step? How to make javac embrace the CLASSPATH?
+	Found a -cp javac option, man javac, scroll down 2 hits.
+	It doesn't work...
+NOW HAVE script: ./jc, which does the compile and move.
+---
+Goal: toptoi and other convenience push/pops.
+	A design issue is where to draw the line between Stuff and C primitives.
+	For example stack.c uses primitives and builds approprate wrapper as a
+	struct stackentry. The line is drawn INSIDE of stack push/pops. The C data
+	is needed in expression. Maybe expr() does the unwrapping. But pushone(),
+	etc is handy for reln(). Hmm.
+		Maybe keep Stuff wrappers a bit higher simplifying push/pop. 
+		Add pushk(int), pushone(), etc when needed in expression.
+	AND DITTO the funtab stuff. 
+	AND eq() needs to resolve an lvalue. Might want to do that soon.
+---
+Ultra simplified stack.java has just the stack itself, push, pop.
+How about expression next. A bit of parsing needed.
+---
+EXPRESSION...
+In tiny-obj expr.c has these fcns...
+	asgn
+	eq
+	reln
+	expr
+	term
+	and uses factor.c 
+These are in tc.c~459..675, total 269 lines.
+Starting with that code for expr.java.
+Doing konst first.  ISSUES:
+	_findEOS must return pr subscript
+	_mustFind ditto
+	DECIDE where are fname,lname converted to a Stuff?
+		konst, or new fcn immediately after ?
+		Simplest is konst, then return a Stuff which is ample.
+Plan: get it to work returning code, than add conversion to Stuff.
+STATUS: Wed 7pm: Working on PT.java. 
+---------------------
+
+Thur, Jan 27
+How to grep with brackets. Use primes AND backslash...
+	grep 'pr\[' *.java
+	grep '\*cursor' *.java
+---
+ISSUE: where to put char pr[TJ.PRSIZE] ?
+	TJ has manefest constants and some globals, e.g. cursor.
+	Stack has the stack.
+	cursor,first,last and pr and all parsing should be together.
+	PT is parsing tools.
+	I'm thinking one big file for pr and all code needing access to it.
+	PR.java ???
+	Where does main go? java TJ? java TC? 
+	When packed into a jar, how is the jar executed ?
+		java -jar /../pathToApp
+---
+import <packageName>
+	package statement must be first in file except for leading comments
+	or blank lines. My package name would be tgibson37.tinyc.
+The package statement in Stuff hides its main, and it wont run.
+How to execute a package produced by one file? 
+---------------------
+
+Fri, Jan 28
+New ~/Projects/Java/Play folder. Goal is to experiment with package directive.
+========================= (hiatus) ============================
+
+Sun, Feb 6
+Moved tiny-j under ~/Projects/Java.
+
+See ~/Projects/Java/Play/PackageFun for above goal. 
+Instead of a makefile I used a few very short bash scripts: 
+	setClassPath, jc (compile all), run, clean (remove class files). 
+And package name is /tg37/pkgTry. I now understand packaging much better.
+
+STATUS:
+	must compile in specific order, so using jc to capture that order.
+	So far 2 compiles, the rest fail. NEEDS study why.
+		BECAUSE latest changes were not finished/debugged.
+pr not declared anywhere. Most usages are in PT.java (parse tools). 
+	Where to put? TJ so far is constants. It has NO prereq classes.
+		DONE. And stack[] defined in stack.java, too.
+---------------------
+
+Mon, Feb 7
+GOAL today: retrofit those scripts to tiny-j and package all.
+Bit of confusion. The work is in dir Java/tiny-j. The package is tg37/tinyc.
+And: going straight to new dir structure.
+---
+x	move/modify scripts
+x		setClassPath
+x		clean
+x		jc
+x		run
+x	create dir structure
+	edit src to belong to /tg37/tiny, and store under src dir
+	test this mess
+STATUS:
+	6:20am TJ compiles using new dir structure, jc works, clean works
+	6:35am Stuff compiles, runs OK 	
+	That brings me to the run status of old file structure, ~155 above. 
+---
+Goal:
+	Write Stack test main.
+		Stub runs, needs actual test code.
+		Const probably needed.
+Const
+	NEEDS PT
+	compiling from cmd line (#'d out in jc)
+	konst() should return a Stuff, or null. 
+PT
+	Needs xcmnt and other x data.
+---
+Plan:
+	Get PT working first
+	Then Const
+	Then use to write Stack.main tests
+---
+New Methods: code in PT.java 
+	to replace strncmp...
+		boolean match(String s1, String s2, int n) {   // arbitrary strings
+		boolean matcur(String token){                  // to cursor 
+New shell scripts:  gj sym, gc sym  --  Grep java/C code
+---------------------
+
+Tue, Feb 8
+STATUS
+	./setClassPath  sets to this works cls
+	./jc compiles Stuff,TJ,Stack
+	./clean removes class files
+	./run runs Stack.main which is a stub. No test code yet.
+	./gc sym greps the tiny-c source for sym
+	./gj sym ditto for java source
+Current work
+	Using $ javac -d cls src/tg37/tinyc/PT.java to java-ize PT
+	strncmp PT~17, replace with appropriate match(): ~15,21
+WONDERING if TJ should define tools like eset() and the match()'s ???
+	They use lots of TJ-dot, e.g. TJ.xcmnt.
+	The goal of a tool class is to make algorithms easy to code. All those
+		TJ-dots make for messy typing AND reading.
+	In effect merge TJ and PT.
+	A downside is all the parse tools become TJ.lit(TJ.xcmt)), for example.
+	So include that, too. Conclusion is layered code does not map into
+	classes unless you want to XX-dot everything. 
+EXTEND is the solution. PT extends TJ. All the TJ-dots disappear !!!
+	Higher layers extend lower layers, adding to them. But watch out names.
+	You lose the separation of name spaces. Not an issue for this project.
+---
+pr+cursor doesnt work. pr is char[], cursor is int.
+pr.substr(cursor) may work if pr is a String.
+STRING pr: Read file line-at-a-time appending into StringBuffer. Return 
+buffer.toString() which is done efficiently, no copying. Now tokenizing is
+done using substring, compareto, and more.
+---
+It seems to me that matching will be easier to write if all the pr text is
+an array of String tokens. How hard is it to write a tokenizer? One pass over 
+the read buffer into String token[]. Can I expand an array? Assume yes for now.
+First char is:
+	comment --  pass over
+	alpha  --  continue through alphanums
+	const  --  continue thru the constant
+	()[]   --  single char
+	ops    --  test for 2 chars
+Do a line at a time. 
+	FUTURE: 1st byte is token type.
+		matching []'s point to each other.
+		fcn call points to the fcn decl.   MAYBE MORE
+---------------------
+
+Wed, Feb 9
+Working on Token.java
+ArrayList~502 has addAll(Collection)
+STATUS 1 pm: parses alphas & numbers. COMMITTED. And tidied. 
+NEED to add more types:
+	constants, operators, structure: {}[](), puctuation, other. Is that all ???
+	Add one at a time and let the tokenizer decide.
+AND: A small struct with just the type and token is what should be in token[].
+QUESTIONS: should I continue with arrays or should I use ArrayList ???
+---------------------
+
+Thur, Feb 10
+Back from Tokenizer, which is now in ../Java/Tokenizer. A copy is here as
+a package member.
+
+~282 STATUS is handy
+	~290 has javac for PT, PT extends TJ. NEED TJ.class
+	cls has only Token.class
+ALL fixed, ./jc now compiles PT with errors  <<==  AGENDA
+./jc now writes error file and does head -n 40
+---------------------
+
+Fri, Feb 11
+PT compiles. No main.
+STATUS
+	./jc compiles Stuff,TJ,Stack,PT  <<== EVERYTHING
+	Token was moved to Projects/Java/Tokenizer, not in any package.
+Const next...
+	konst returns Type, not boolean. Type==0 means false.
+---
+Thoughts: 
+Building a parse tree might be fun. A [] block would contain ALL the
+statments withing the block. An fcn defn would have a Stuff of type FCN with 
+return type, name, args, body: 4 elements. Constants would be type and value: 
+ints would be parsed once at parse time, and value held as a java/C/whatever
+integer.
+---
+Structures:
+	TJ <- PT <- Const 
+	Stuff <- [S,C,I]val
+	Stack
+Expression Parser~393..675
+	asgn, expr, term, factor, konst  
+Rename Const.java -> Expr.java and do all 5 classes.
+Combine Stack and Stuff. OR put stuff into TJ.
+        ???        ???        ???        ???
+PLAN:
+x	Rename Const -> Expr
+x		Get it to compile
+		Design/code tests in main()
+	Add expression stack but factor does ONLY constant.
+	USES pushk & toptoi, so Stack gets tested, too.
+---------------------
+
+Sat, Feb 12
+A choice of goals: 
+	Work on tokenizer project until it can tokenize a tiny-c, C, or Java program.
+	Finish the java version of tiny-c.
+	The former gives me a nice publishable tool. The later a workable tiny-c.
+	But I can do tiny-c on my laptop, maybe. And the latter may be useful in
+	the former, giving it more purpose.
+Today I think I will do the tokenizer.
+---------------------
+
+Thur, Mar 24   --   (six week hiatus)
+With my C platform crashed I return to java. Recalling the status here...
+	No cmds file, but gc, gj, jc
+	jc compiles PT.java and Expr.java, and had also done Stuff & Stack.java.
+	gc/j greps code in two places: ../../tiny-c and ./src/tg37/tinyc/*.java
+	Setup: setClassPath sets to local cls dir only.
+Studying ~50 above, Stuff. 8080 code everything was an int when popped, but
+stack data described it. So Stuff is what is pushed/popped. 
+tc's class changed to dtod (distance to datum), 0 or 1. Avoids confusion.
+	3 subclasses: Sval,Cval,Ival hold respect. These ARE the values, there is
+	no value space allocated in pr.
+at ~184 above...
+	java Stack               <<-- "could not find..."
+	java tg37.tinyc.Stack    <<-- WORKS
+---
+$ java tg37.tinyc.Expr
+running Expr.main0 11
+ ~9 ~109             <<==   FREEZes
+ 	This must be my most recent status for tiny-c. 
+ 		~109 is in PT.java, rem.
+ 		pr code is set in Expr~46 to:   "  77  foo  "
+ 		~109 is while loop in rem() and ~123 when loop is done doesn't print.
+so konst() must call rem() ???    <-- YES
+	java .../PT runs OK
+this~320 above, the adventure into tokenizers  !!!
+	this~350 tokenizers seems to have been spun off for future, and effort
+	moved to konst, hence up the stack to asgn. Then distracted into antlr.
+Going back to Tokens for awhile.
+---------------------
+
+Sat, Mar 26
+Tokens is stable and tests fine at global level. Does not go into fcn's block. 
+Moved back here to use it as a tool. And renamed this tiny-c. I will focus on
+that until I have a servicable tc. There are now 2 tiny-c folders, the C version
+in Projects/tiny-c and this version on Projects/Java/tiny-c. I probably need to
+make some code changes to reflect this new goal and arrangement.
+SURVEY...
+	src/*.java    all early Feb dates
+		why ~s here and also above 
+	gj & other cmds
+diff PT*    seem to be debugging PT:    ~109 ~123 prints,  ~117 loop changes
+	  ^---  ParseTools, extends TJ, all token strings here, lit(), find(), etc.
+	debuggin infinite loop in rem
+run script: runs Expr, some ~s then FREEZes.  <<-- DEBUGGING target
+4 mains, all except TJ.
+	Stack not tested yet. Needed by Expr. Stuff is tested.
+---
+STATUS: Expr runs, konst parses an int 77, and quoted string.
+This code CHANGES the f/lname convention from '77 code (incl/incl) to C 
+	convention (incl/excl). Hopefully that will simplify things, but BEWARE!!!
+Stuff wrappers C/I/Sval have two value getters: toString, and getVal.
+	Keep both for awhile.
+---
+Next goal(s): 
+	the asgn...factor stack into expr.
+	Works w/ konst:  String test1 "1+2*3"; System.out.println(test);   <<-- 7
+		All relns tested true/false and borderline cases...
+			1<=2; 1>=2; 1==2; 1!=2;     TFFT
+			1<=1; 1>=1; 1==1; 1!=1;     TTTF
+			1<2;  1>2;  1<1;  1>1;      TFFF
+		Parens in factor...
+			(1+2)*3   <<-- 9
+	Save work so far as Project/Java/Expression
+	Commit/Push to new project: Expression
+---------------------
+
+Sun, Mar 27
+Above goal ~443: asgn etc into Expr.java
+	cp C code into java file
+	java-ize
+		factor: enuf to call konst, then test w/ numbers, no syms
+Subgoal (27 May, 1:30): NEEDed in Expr.reln()...
+	Stack tools: topdiff and whatever it needs.
+---
+STATUS: doing ~460 subgoal. The new stack pushes actual strings onto the stack.
+toptoi resolved by returning ptr to the string in pr, knowing it was a C string
+due to the trailing " mapped to 0. And it had int<->ptr coerson. What should the
+java tc do about string datum for toptoi call? Probably need topType(), and 
+toptodatum ??? What code should diagnose   x = 7 <= "foo"   statement ??? Not
+stack. Expr.reln() would be proper. So it needs types AND values.
+---------------------
+
+Mon, Mar 28
+Working on Stack.
+	Major change on lvalue: Because the value is part of Stuff an lvalue does
+	not have to be resolved. The val itself is changed. And class is now called
+	dtod (distance to datum) 0 or 1. These being delicate changes need thinking
+	through, carefully.
+	BUT for now get Stack to compile and the thorough shakedown.
+Stuff/Stack issues/thoughts...
+	How to declare the 3 types. They are manifest constants.
+	java 5 supports enums. Good read...
+	https://docs.oracle.com/javase/1.5.0/docs/guide/language/enums.html
+---------------------
+
+Tue, Mar 29
+Stuff is stabilized for constants, but NEEDs to support vars.
+Back to Stack. STATUS: NEEDs topdiff for use by Expr.reln().
+	Stuff needs boolean isInt(), isChar(), isStr()
+	Stack then writes    if(top.isInt())...     etc.
+LVALUE: resolved in Stack, or Stuff ???  I can face that issue later, for now
+	all stack stuff will be constants. Stuff carries the lvalue flag, so it
+	may be nice for it to handle in getInt().  
+Stuff will know nothing of vartab, and the values are in var now. So lvalue=='L'
+must go to the var. '77 tc lvalue=='L' case had a value that pointed into
+value space, which was in the call stack. READING enter().
+C code: newfun var~6, opens up stack frame. fundone closes it.
+	curfun, nxtvar, prused involved. prused was the value space.
+Confusion on Stuff flags, esp lvalue. pushst is not setting it
+properly. It pushes JUST stuff and returns. But stuff has lvalue
+'field' currently TRUE/FALSE. It is tested for 'L' 'A'. Changing to
+the latter.
+Stuff val is too complicated. Make getters abstract, and test first
+then call the right getter. Each val has its own way of returning
+a value, each getter a different signature, each abstract in Stuff
+itself so it is accessble at the Stuff level.
+---------------------
+
+Wed, Mar 30
+x	Fixing Stuff.val first
+x		Tested
+OPEN QUESTION: how does 77 tc handle primitive chars. They are popped as int
+using toptoi in C. Does putchar take an int? Should I have a getChar() in Stuff?
+Face this question later.
+Back to Stack:  working on topdiff()   <-- OK so far
+STATUS: works OK on constants, type 'A'. Array code is commented out.
+PLAN:
+	Study stack in tc code, list work to do
+		stack.c: 126 lines
+		basic: pushst~38, popst~52
+		convenient: topdiff,toptoi,pushk,pushPtr,pushone,pushzero
+			the latter 2 are really pushing a boolean, used by reln().
+		Have so far: basics, toptoi, topdiff.
+		Others are trivial, and can be done when needed.
+Decision: Stack is sufficient for now. RETURN to Expr, above~442
+	As tested Expr is OK. But the test is shallow: parses 2 constants,
+		77 and "foo"
+GOAL: parse and compute arithmetic: eg 1+2*3, and (1+2)*3 and more.
+	THEN: Do a readline to get the equation, document, push.
+DONE:	commit Expr and stabilized Stuff/Stack.
+NEXT: test Expr more deeply.
+---
+ISSUE: Stack.pushPtr~61 pushes an array pointer. dtod is 1. type
+may be either. Stuff~33 declares dtod, but it is not used anywhere
+until arrays are implemented. Stuff~29 now has an empty Pval which will get
+coded then.
+x	Stack needs to implement pushPtr(int datum)
+---------------------
+
+Thur, Mar 31
+Test strategy: more and deeper equations using ints. Call asgn().
+toptoi() to get the result.
+	pr is declared in TJ~14 as String. The various test mains set
+it to whatever, and any code that extends TJ find that. Expr extends
+PT which extends TJ.
+---------------------
+
+Fri, Apr 1
+end of line problems. Expr main needs to be more careful.
+asgn given blanks cannot handle that. It assumes a context.
+Braces in test string do not help. konst cannot handle it either.
+	konst followed by spaces IS OK   "... 11  "
+ASSUME for now a proper context will make things good. Adding
+cursor test to asgn seems not a good idea. MAYBE a survey of PT
+code is needed. Goal now is to finish the 6 relation tests with
+a constant and spaces at the end.
+---
+STATUS: 12 reln test OK
+Next: More expr tests, see ~444 above
+x		Parens in factor...
+x			(1+2)*3   <<-- 9
+Then: recode Expr.main as standalone tool, document, push.
+ISSUE: If asgn sees a space it goes all the way to factor to
+x	realize that, and then advances over ONE SPACE, returns to
+x	test code which calls asgn again.   FIXED 
+Expr seems solid.
+x	commit
+Large block of code in factor() commented out. It calls 
+symName and var mainly, class 'E' is one line. It calls addrval. To test it
+requires the vtab. That seems a reasonable goal. Would not need to parse decls,
+var.java main would make calls using quoted names. var.c is the code, 162 lines
+excluding dumps. 
+---
+	newfun~6
+	fundone~25
+	copyArgValue~39		maybe later
+	allocSpace~60		maybe not needed
+	newvar~78
+	canon~98			ditto
+	addrval~131			3 flavors, 2 are support for the ONE used elsewhere.
+	dumps~165			maybe not needed
+So just framing and newvar and addrval, 4 methods, all public.
+---
+ISSUE: why an array? Same issue for Stack. Could be a list.
+DECision: Var.java is just a list of local hashmaps plus global and
+lib hashmaps.
+x	Make Stack be a List  
+---------------------
+
+Sat, Apr 2
+Goal today: var.java
+	cp'd from tiny-c
+	java-ized, compiles
+	test main
+	seems OK
+---
+This impl of tc's variables: 
+	Stuff has full description of a var except for its name.
+	Stuff has the var's value, so no allocation is needed.
+	Hence no need for obsize, which is now gone.
+ISSUE on Array:
+	Haven't got there yet. But an array must be a List<Stuff>,
+	or maybe Stuff[]. Code so far only handles simple Stuff.
+Var ready to test. Cases: push several vars into about 5 places
+and then retrieve and test them, and do a fundone and retrieve
+and print them again. lib1, foo, glb1, bar, nwfun, lcl1, nwfun, lcl2,
+foo. THEN lookup each w/ curfun at 2nd local.
+	Need to set/get values in some.
+---------------------
+
+Sun, Apr 3
+x	newfun, fundone, newvar tested OK
+x	dumpVarTab OK
+x	addrval
+---
+Studying test.c to determine order of writing the C version.
+The big switch is ~168. cases & targets...
+			java status: x done, + partial 
++	1	newvar, vartab,	char, varalloc
+x	10	stack
++	13	parse tools: skips, rem, konst...
+x	17	newvar, vartab, addrval
+x	18	expr
+	21	decl and asgn, beginning of st(), array, 
+	25	MC
+	26	if else
+	27/8 empty cases
+	29	st
+	30 up used testfiles, code frags
+	34	link
+	40	pps lib stuff (ps, pn, etc)
+	73 up used bashfiles to run whole progs
+Richer st() seems to be next item.
+---------------------
+
+Mon, Apr 4
+new file: ST.java,    statement,  ST.st(). It needs a few support fcns...
+	quit()
+quit has an issue: it needs a key listener which in java requires
+at least AWT. Goggled "java key listener" and tried one way that
+failed. See Projects/TryIt/FIR.java. Looking around for another way.
+One fallback is a tiny AWT with just a quit button. Fire up the
+console app and get the button on the side. LEAVE THIS WHOLE ISSUE
+ASIDE for awhile. ^C does a quit. So focus on... 
+---
+GOAL: st() executes something minimal, then grow
+$ ./gc stcurs
+../../tiny-c/tc.c:375:	stcurs=localstcurs;   enter()
+../../tiny-c/tc.c:387:	stcurs=localstcurs;   enter()
+../../tiny-c/tc.c:765:	stcurs = cursor;      st()
+../../tiny-c/tc.c:809:	agin = stcurs;
+../../tiny-c/tc.h:117:char* stcurs;
+---------------------
+
+Wed, Apr 6
+Working on ST, incl decl, varalloc; and PT.symName.
+dtod mystery: Studying tc.c code... 
+	varAlloc(type,vpassed)
+		symName (success required), the tests for '('
+		computes vclass,alen, (both local) 
+		calls newvar(vclass,type,alen,vpasses)
+	newvar
+tc.c code: vclass is declared in tc.h, but used only in
+varAlloc, and passed to newvar as an arg. TIDYING THES AWKWARDness:
+Called dtod now. Declaring as local in varAlloc. 	DITTO alen.
+x	Works
+x	commit    (just varAlloc)
+---
+NEXT: link as fcn in Var
+---
+struct funentry *fun, tc.h~78. 
+	fun,curglbl,curfun,efun are all ptr to funentry
+	newfun/fundone must be involved. All part of Var.
+	fun IS the fun table. Should be called funtab. Others pnt to 
+		sections of the table.
+Don't need curglbl, etc. Not even fun. The Map/List containers are
+sufficient. newnum and fundone are complete and tested. So all those
+pointers have no equivalent in this version except curfun which jumps
+around to different maps. NEED: addrval java-ized.
+---
+STATUS: goal is big-bang compile, incl link(). Then do TC.main which should drag
+in whatever else is needed to complete. 
+---
+Confusion stack vs vartab: Stuff designed for stack data. 
+	NEED to create function entry for vartab. Stuff.Type.FCN
+class Var IS a variable, and its 3 containers, too. Var data is
+taken from tc's struct var. 
+x	Var should NOT extend PT. It is not a parse tool.
+	Needs constructor.
+	Probably the containers should be in their own class, not Var itself.
+		Vartab ???
+---------------------
+
+Fri, Apr 8
+Broadening the role of Stuff so it can be used as part of a Var.
+But Var includes function, so...
+x	A Var has Stuff in it. Stuff has 4 types: INT,CHAR,STR,FCN
+	Move useless getters out of Stuff into the derivative.
+	Always test the type before calling a getter.
+Thought: dtod should be boolean isArray
+---------------------
+
+Sat, Apr 9
+Working to get a compile for...
+	Stuff
+	Var
+	All
+new Ival issue ???  Going to clean dir, Java/TryIt
+	TryIt goal is smallest code that has the non-static complaint.
+	Complaining about use of nonstatic var in constructor.
+---------------------
+
+Mon, Apr 11
+STATUS: Now have Stuff.java and Stuff.bak, an older version. And 2 dot-baks.
+One is in Projects/TryIt. 
+	Another in Projects/Java/TryIt. This latter one is where I experimented with
+cloning, and got some evidence how to make sub classes cloneable.
+	Then I wondered do I need cloning at all? Var is a variable description
+and goes into var tables. Stuff is a value description and goes onto the Stack.
+A Var has a Stuff which has the Var's value. eq() will be involved. A Stuff will
+need a value setter.
+PLAN is to not do a clone, but role foreward towards a working asgn() in Expr.
+But which of the Stuffs is the base? Grep the various source dates.
+	Stuff.java~			 Jan 27 14:20    1693 bytes [d0]
+	src/*/*/Stuff.java~  Apr 8, 08:52 	 3588		[d1 diff]
+	Stuff.bak			 Apr 9, 08:56    3603		[d2 diff]
+	src/*/*/Stuff.java   Apr 9, 12:15	 3994		[d3 diff]
+d0: dtod,lvalue,type,len,getInt(). Manifests all int. Sval,Cval,Ival. 
+d1: isarray, "    "   " ,toStrinng(), many getters, enum manifests.
+d2: ~52,103 changes. vc commented out. Ival's super(..) commented out.
+d3: tons of changes. booleans instead of enums. richer constructors. Base vs
+derived class details sorted out. This IS the latest and probably the best and 
+the only dot-java (others are bak or ~). Pval derivative commented out. Not sure
+it is needed. All tests OK.
+---
+Goal: Run all tests one at a time.
+x	Stuff
+x	Stack
+	Expr	fails
+x	PT
+	TJ	(no main)
+x	Dialog
+x	ST
+	Var		fails
+----
+x	NEED getInt() abstract in Stuff and invalid calls eset(TYPEERR).		
+	Issue: what is diff between Stack and StackImpl. NEED peekTop USAGE.
+---------------------
+
+Tue, Apr 11
+Working on Expr. Stuff and Stack seem settled down.
+8am: Expr also OK, ditto PT, and now (noon) Var.
+File toc:
+	PT		x.. Strings,f/lname,lit,symNames,finds,rem
+	TJ		eset,PRSIZE,pr indices, error/at, cursors, leave,brake, 
+		another f/lname, type flags, error tags
+	Dialog	countch,errToWords,f/lchar,whatHpnd,showLine,simple prints,logo
+	ST		st,quit,skip,decl,varAlloc
+	Stuff	type,len,lvalue,isArray,Stuff(.),getType/Int,isXxx,createI/C/Fval,
+		S/C/I/P/Fval
+	Stack	stack,pushst/k/Ptr/one/zero,popst,topdiff,toptoi,StackImpl
+	Expr	asgn..factor,konst
+	Var		isArray,type,len,value;containers:lib,globals,locals;newfun,fundone,
+		copyArgValue,Var,addrvals,peekTop,dumps,tclink
+---------------------
+
+Wed, Apr 13
+NEXT: tcMain.c, 200 lines. main is ~183, 20 lines, lots of dash options: lqdvr.
+Postponing those, the logic is:
+	allocStuff
+	cp seed code
+	set cpr,endapp,prused indices beyond the seed
+	set cursor & curglbl
+	load default library, mark end
+	load app code
+	set nxtvar, nxtstack, curfun
+	logo
+	link
+	setcursor
+	st()
+	whatHappened
+allocStuff~148   probably mute because we use java containers
+	prlen [check pps/tc.prop for override]
+	funlen [ditto]
+	stacklen [ditto]
+	vtablen [ditto]
+java version may start out much simpler:
+	cp seed code
+	load code: lib and app
+	set whatever
+	link
+	st
+	whatHappened
+Hmm. Code from scratch, and use tc.c as reference, not code to java-ize ???
+New file: TC.java
+---------------------
+
+Thur, Apr 14
+STATUS: TC.java reads foo.tc and prints it.
+GOALs:
+x	TC: full load of pr incl seed, pps/library.tc, xendlib, foo.tc
+	foo.tc uses ps, links and runs OK
+	survey for commented out TODO code, and bring them up
+---------------------
+
+Mon, Apr 18, Happy Easter
+Status: discovering status. ~800 above is the goal. New code in TC, ST, Var.
+Running	TC with foo.tc arg as test. 2:45pm running now, but tclink produces
+empty dumpVarTab. STATUS: debugging tclink, Var~119.
+---------------------
+
+Thur, Apr 21
+Status: debugging tclink. Infinite loop. Running...
+	./r TC foo.tc
+	foo just pl's a String
+	lpr/apr/EPR all OK
+	issue is in checkBrackets
+		lpr: cursor 9...5500, error 0
+		GLOBALS: 5500...???, error 2023, cursor DID NOT ADVANCE
+---------------------
+
+Fri, Apr 22
+The only foo.tc global is foo itself.  
+	The first bracket test is the seed, cursor = 0..9
+	The second test is libs, 10..5500 which includes the 'endlibrary'
+		Is pps/library.tc 
+	The third test is the app, foo.tc. It is never reached.
+	Why both EPR and endapp? 
+		Both in TJ~15, legacy from data being in pr from endapp to EPR.
+			24 endapp hits, 7 EPR
+---------------------
+
+Thur, Apr 28
+Dumps in TC,Var show only 
+	ONE symbol hit (Var~156)
+	One entry in libs, none in globals  [dumping map.size()]
+		dump of the one needs work      <<<===  Var~
+	SHOULD have all libs, and two globals: foo, main
+x		BUT foo needs a main.
+	WHY is the loop not looping ???
+---------------------
+
+Fri, Apr 29
+getproperty is 1st lib sym and ONLY in lib map. 
+x	Cursor must run to end of pr before 2nd pass of while: Var~142
+2 bugs found/fixed today (8am)...
+	ran TC.main:    ./r TC foo.tc
+	dumped libs and globals maps. Being hashfiles the dumps have random order.
+		But the content is proper
+	Uncovered TC~62: ST.st(), it did nothing. Probably missing code. SO...
+Goal: Actually execute the seed, main, and foo.
+	Need to read ST.st(): ST~15. 
+x	Need to tidy Var, etc.
+	Getting LINKERR running ./r TC foo.tc
+		Parses seed's '[', in xlb loop ST~30 cursor is 1:  --> "main();]" 
+		Linking is history. Should enter st() again, tunnel down to factor and
+			symbol, look up 'main', and do enter().
+Study the code starting at ST~30...
+STATUS: error is set in tclink. TC~45,49 bracket the call
+	printing error: 0 then 20.
+	Code goes on running: ST~'s   15  20  28,29  30,31,32
+		in st() -------------------^   ^   ^  ^   ^  ^  ^
+		before rem() ------------------J   |  |   |  |  |
+		xlb match -------------------------+--J   |  |  |
+			xlb for loop -------------------------+--+--J
+---------------------
+
+Sat, Apr 30
+Most likely I need to set endapp just past the last ] instead of == EPR. It 
+should never start that last loop.
+	Didn't work. tclink works but ALWAYs sets LINKERR, probably in last pass.
+	cursor points to final ] on last pass. cursor needs to be bumped PAST the
+	the last matched ], but where ???
+		skip works fine until end. 
+		foo.tc has a \n at end.
+		tclink's last call to skip was the match of global 'main'
+Try jdb SS from the match of main...
+	$ jdb tg37.tinyc.TC foo.tc
+	> stop at Var:148      <<--  deferred, ~148 is match of endlibrary
+	> run                  <<--  ran to end, no hit on 148
+Also: cont for continue, stop in Class.methodSignature
+---------------------
+
+Mon, May 2
+Suspicion: skip block is stopping one short, ST~164, calls from ST and Var.
+	TRUE, auditing all calls...
+	ST~142	skipst, compound case, followed by rem call 
+	 148	skipst, if/while case, optional ()'s around the args.
+	 167	defn
+	VAR~114	checkBrackets, cursor at end is irrelevant
+	 144	tclink skip fcn body case, bump here may be best fix
+	 164	tclink symname case, skip fcn body
+Philosophical question: am I cloning code as done in priors, or am I tidying
+	awkwardly done stuff like skipst ??? It would be better if it moved the
+	cursor just beyond the matching 'char r.'
+	AND this worked once in prior C version, and 8080. How do these these 3 impls
+		line up ???
+	Thought: get it to work as is for now, then consider doing a total 'tidy
+		audit' and overhaul...   vs    I'm into this issue now, get it right:
+		working AND tidy. I THINK THE LATTER IS BEST. ~884 audit above is a good
+		starting place. How should each end up ???
+	ST~167: cursor should be JUST beyond matching r.
+	Others: conform to new defn.
+		ST~142	OK as is
+		148		study:	looks iffy even as is
+		Var~114	OK as is
+		144		study:	OK as is
+		164		study:	IMPROVED, this is the bug
+8080 skipst, App A ~282C.
+	rem(), lit [, skip [], skip if-else nested.  BUT NOT while ??? 
+	My guess is it was coded to served only where needed. All calls to skipSt
+	are from ST, ~'s 56, 60, 85, 95, 149, 151     java version.
+		from tc.c    691, 693, 787, 791, 815, 825
+x	6 total uses. DECISIONS: BUMP the cursor PAST the matching r. Fix later
+x		if anything breaks.
+---------------------
+
+Tue, May 3
+THOUGHT: should eset call whathappened and exit ???
+Yesterday added the bump at ST~177, today compiled, 
+	run crashed: Stack~96. error stayed 0. So above fixed and have new issue.
+x	Lots of output. Removing err prints in Var~135..141, TC~49. 
+x	Goal is clean run to the new issue.
+Issue: debugging st. Stack to crash point...
+	at tg37.tinyc.StackImpl.pop(Stack.java:96)
+	at tg37.tinyc.Stack.popst(Stack.java:18)
+	at tg37.tinyc.Stack.toptoi(Stack.java:33)
+	at tg37.tinyc.ST.st(ST.java:115)	in st, after Expr.asgn()
+	at tg37.tinyc.ST.st(ST.java:32)		in xlb loop, calls st()
+	at tg37.tinyc.TC.main(TC.java:53)	calls st()
+		cursor is 1
+		probably Expr.asgn pushed nothing. 
+			Should have matched 'main' and looked up and entered.
+Exactly what path ???
+x	Plant a print deep to see if it is first hit...
+x	st~32, xlp loop calling st()
+		cursor -> main();]
+		SO: st got into seed's [], is trying to process 'main'
+---------------------
+
+Wed, May 4
+PLAN: use jdb, bkpt ST.st:34 (just before loop's st call), then single step...
+	What should happen: 
+		st down to Expr.asgn to factor, to symbol, match 'main,' addrval,
+		is an 'E', enter.
+GOAL: where did it go off the track ???
+---------------------
+
+Thur, May 5
+Did it get to factor? Have I javanized all of Expr?   <<==  probably, and NO.
+	factor can do only constants, symName is covered.
+Var usage... 
+	Var v = addrval(fname,lname); // searches locals,globals,libs
+	Stuff s = v.value();  // returns Xval, X= I, C, S, F.
+		both uses are tested in Var.main.
+Expr...
+	test cases use only constants, 
+	no code for Var details, BUT  
+Stuff...
+	boolean isNum(),isInt(),isChar(),isStr(),isFcn()
+	abstract getInt() 
+		eset(TYPEERR) for Sval, returns -999999.
+		kursor for Pval and Fvar.
+Var has value, and it is public, so no getter/setter.
+	E.g: Var~200.
+---
+I need to document the API for each main class, with summary paragraphs.
+x	api.txt
+---------------------
+
+Fri, May 6
+STATUS: ./r TC foo.tc crashes, peekTop. 
+	Its running fresh code, never run before.
+		ST~32, xlb loop calling st, cursor->main();]
+		factor~165
+	So it got that far at least. Need to study code from there to crash point.
+		Stack~103
+Its tunnelling out of asgn stack, and expr~84 expects a value returned from 
+below. The cursor points to 'main' (in the seed). That should have been entered.
+So what happened in factor: expr~165 ???
+---
+added 'dump' script to tc source, tab 2 of cmd window.
+	FROM THAT tab ./dump compares times of src vs classes.
+---     back to ~978 above...
+factor should have parsed main, looked it up, entered. Reading the code...
+	expr~165: 
+That code is fresh C, not java-ized yet.
+	Stuff:	public boolean isArray;    // used to be int class
+		tons of hits via ./gj
+		note isArray is public, no get/set.
+			All the classes are really just public structs with code.
+			Stuff and Var are the only objects. 
+typeToSize, tc.c~45, computes byte size for storage purpose.
+	BUT Stuff holds the value. Does that include the whole array?
+		It must. No other place to put it this java design.
+		So accessing an element must be handled by Stuff, not client code.
+		Have not yet parsed an array, so Hmm.
+PLAN: do arrays later. Get foo to call pl, and pl to do its thing.
+x	Expr~7: enter(int where)...    <<== stub
+ASSUME: typeToSize is obsolete.
+STATUS: stub enter sets cursor and calls st(), nothing more.
+x	The seed does call main, and foo is parsed but not its arg yet.
+x	The cursor -> char b(0     <-- the arg to ps
+Goals: 
+	full enter incl MC call, 
+	then new file MC.java with ps.
+Stack.java has implied nxtstack: StackImpl.list.size()
+C version enter manipulates nxtstack building the args.
+	varargs complicates things. Maybe skip for now ???    YES
+---------------------
+
+Sat, May 7
+Abandon enhancements to Expr.main, too messy.
+Restored Expr.main to original test code, all 3 pr OK now.
+Status: working on full enter, ~1003 above.
+Test run:   .r TC foo.tc
+	loadCode, tclink, st
+Changes to Stack are getting messy. Stack has static methods. StackImpl is
+new'd up at ~10. Expr.enter needs to get size of StackImpl.list which IS the 
+stack. ~92 error complains about non-static variable list. Stack should offer
+a static size(), StackImpl should be hidden, private to Stack.
+	./r Stack runs OK, will need size test case added.
+Goal: Stack.size() method, Then use it in Expr.enter().
+ISSUE: jc complains Stack~91: static flaw...
+	static List cannot hold non-static Stuff  ???
+---------------------
+
+Sun, May 8
+I'm thinking it is time to make my container classes be singletons instead
+of all those static methods. Also TJ error codes should be final. Issue is when
+to do it, now or after enter() is finished. I think maybe now. But I need
+closure on changes so far, specically good compiles. Do that easily by
+covering not fixing erroneous code.
+x	Stack ~91
+x	Expr ~11,36,37
+x	Full compile, (12 seconds)
+https://www.journaldev.com/1377/java-singleton-design-pattern-best-practices-examples
+PLAN: Make these files self instantiated singletons.
+		Use above ref method 4: Thread safe. Same as my old usage except the
+			synchronized attribute on getInstance(). 
+x	Stack
+	Expr
+	ST
+	PT
+	do getInstance() calls with local refs where needed. E.g...
+		Dialog di = Dialog.getInstance();
+		PT pt = PT.getInstance();
+		di.errToWords()   instead of   Dialog.errToWords()
+		pt.xif            instead of   PT.xif
+	find all refs to calls and use above technique
+	AND change names of the two letter classes, e.g. 
+		ParseTools.java instead of PT.java...
+			ParseTools pt = ParseTools.instance();
+---------------------
+
+Mon, May 9
+Moving from static to singleton, ~1039 above
+	Stack done, Expr next.
+---------------------
+
+Tue, May 10
+First mentions of each src...
+	Feb 7:  git     "5 source files"
+	Feb 11: git     "PT compiles"
+	Mar 30: git     "Expr parses constants,     Stuff and Stack stabilized"
+	Apr 2:  git     "Var compiles"
+		notes...
+	Jan 25: Stuff   notes~119
+	Jan 26: PT          193
+	Feb 6:  TJ          254
+	Feb 7:  Stack       259
+	Feb 8:  tools: setClassPath,jc,clean,r,gc,gj
+	Feb 11: Expr        366 (just Konst)
+	Mar 24: SVal,etc    398, subclasses extend Stuff
+	Apr 2:  Var         589
+Test mains...
+	Stuff
+	PT
+	Stack
+	TC	 (loadCode, overall test main)
+	Expr (relations)
+	Var  (tc.link, newfun, etc.)
+---------------------
+
+Thur, May 12
+More study/doc: role of each source
+		Unit test mains: Expr,PT,Stack,Stuff
+	Stuff	data
+				base for Sval,Cval,Ival,Pval,Fvar
+	PT		parse tools
+				base for Dialog,Expr,ST,Var
+	TJ		variables, constants, eset()
+				base for PT,Stack
+	ST		statement parser (st)
+	TC		loader, system test main
+	Dialog	dialog
+	Stack	stack
+	Expr	expression
+	Var		variables, their container, tclink
+Goal: Singletons for...
+	ST
+	TC
+	Dialog
+x	Stack
+	Expr
+Conversion steps: doing Expr
+	4	Change calls everywhere from class to instance
+			use compiler or ./GJ to find them
+			use getInstance for handle
+	5	run all tests
+---
+	Expr calls are all in ST.
+	Doing step 4 first.
+Steps: doing Expr...
+x	1	find client calls and cnange to instance calls
+x			(ST: ~4, and replace Expr->ex)
+x	2	Expr.getInstance() code   (see Stack~9..15)
+x	3	getInstance call in Expr.main   (Stack~79)
+x	4	remove static on fcn/data definitions
+	5	run unit test
+---
+Var cannot be a singleton. Maybe split it in two:
+	the container Vartab, a singleton
+	the variable Var
+AND meaningful rename the singletons: ST PT TJ TC
+---------------------
+
+Fri, May 13
+Divided Var.java into Vartab and Var source files.
+Var~74, curfun = ..., is a mystery. What did this line of code do?
+---------------------
+
+Sat, May 14
+covered the mystery code line, compiling all...
+Compile all line added to ./jc. Works fine. 
+	tab 2 dump: ls -l both src and cls: ALL COMPILES Ok, 7:40am.
+Goal: run ALL tests. mains:
+	Expr
+	Stack
+	Stuff
+	TC foo.tc
+	Var
+runall:  script to run above mains
+	opens with clear and echo "===..==" as start marker
+	and separates each call with echo "---..--^^<classname>"
+Goal: "running xxx" at start of each test main.
+x	HAVE: Expr,Stack
+x	NEED: Stuff,TC,Var
+Goal: uncover TC~56 call to stmt.st()
+	What it does: load code(arg), link, dump vartab, cursor=0 (->seed), st()
+	short: try to run a tc program (foo.tc ~1139 above)
+	./r TC foo.tc   GOOD up to st call. 
+		TC~49 print shows error 0
+		BUT no further output. 
+Goal: trace the st call.
+	The link vardump is good.
+	Expr has 3 ~ dumps: 226..238 (factor,factor,isFcn)
+	enter() is empty stub w/ nearby covered tc code.
+Goal: get enter working
+STATUS: Only ABOVE code is copied, and is still tc, not java.
+STATUS: forgot to commit yesterday. Need to role back a bit...
+x	Enter body covered
+x	st call covered
+x	./runall is good
+x	commit
+	redo as singleton: (remove statics)
+		Dialog
+		PT
+Why StackImpl ??? Options...
+	merge into Stack
+	StackImpl private and..
+		Stack calls StackImpl methods
+	Keep StackImpl statics for now & fix later ???
+	
+Continuing work on enter ABOVE...	
+	Compiles, MC call is covered for now...
+	./r TC foo.tc    <<== test run
+		call to peektop crashes...
+	at tg37.tinyc.StackImpl.peekTop(Stack.java:114)
+	at tg37.tinyc.Stack.peekTop(Stack.java:28)
+	at tg37.tinyc.Expr.expr(Expr.java:140)
+	at tg37.tinyc.Expr.reln(Expr.java:84)
+	at tg37.tinyc.Expr.asgn(Expr.java:67)
+	at tg37.tinyc.ST.st(ST.java:126)
+	at tg37.tinyc.ST.st(ST.java:45)
+	at tg37.tinyc.TC.main(TC.java:56)
+			Expr~19: enter(5530)
+			 ->  [ foo ]
+main is parsed, and trying to enter the body.
+	WHY peekTop ???
+	Turning on trace: Expr~6
+Enter above w/out args seems OK
+Goal: full enter w/o args, then w/ args.
+-------
+Downloaded prettifier: astyle into ~/Downloads.
+	Needs a C++ build. Will it work.
+	Installed -->>  ~/Projects/astyle
+		Doc:  -->>  ~/Projects/astyle.txt
+	Defaults: in Doc
+	Options: Doc~398 (following huge choices above ~398)
+	Command Line: Doc~447
+	std redirection, or Doc~482
+TEST RUN: cp src -> bak	   ===>>>   src/tg37/tinyc$ cp -a *.java ../bak_15May22
+	then from top (~Projects/Java/tiny-c)   ===>>>  tree src
+		shows all of tinyc and java files in bak_15May22
+NOW experiment with astyle using the main src files, and see if the compile/run
+	astyle *.java, but need path info in the args
+		astyle renames each java with .orig, then pretties them back into .java.
+		So I can go into tab 2 and just do astyle *.java there
+	BUILT ln -s ../../../../../astyle   IN  src/tg37/tinyc (tab 2).
+		IT WORKS! Have 10 orig and 10 java files.
+Goal: study the new java files and decide.
+	NEED side-by-side panels in cmd to see details orig vs java.   KEEPER
+-----
+x	USING astyle...   From tab 2 ==>>    $ ./astyle *.java
+x	The only fixup: find all System.err calls and out-dent them to the margin.
+The code is more readable. Using all astyle defaults.
+-----
+Goal ~1194 above: finish enter, BELOW....
+x	enter BELOW
+x		C code copied
+x		compiles
+	runs
+		seed calls main
+		main calls foo
+	args
+		code
+		compiles
+	runs,
+		foo calls pl
+	MC
+		code
+		compiles
+		pl prints a string
+==================    debugging, in a loop...stack overflow
+	at tg37.tinyc.ST.<init>(ST.java:4)
+	at tg37.tinyc.ST.getInstance(ST.java:11)
+	at tg37.tinyc.Vartab.<init>(Vartab.java:8)
+	at tg37.tinyc.Vartab.getInstance(Vartab.java:19)
+	at tg37.tinyc.Expr.<init>(Expr.java:15)
+	at tg37.tinyc.Expr.getInstance(Expr.java:11)
+		repeats
+Maybe I need to put actual initialazion of instance, and
+maybe othere stuff into the empty private constructors.
+---------------------
+
+Mon, May 16
+solving getInstance infinite loop.
+new question: my inheritance should be composition ???
+	What would the new diagram be ???
+	PT is the issue. It has 5 subclasses. 
+		AND this is where the loop is !!!
+		Var has many objects, but Vartab organizes them.
+		So PT should be composition of...
+			Vartab, ST, Expr, Dialog
+		AND TC composition of TJ, PT, Stack
+		TC should be the top, not TJ, composition of TJ, PT
+TC.main: create all components with local handles passing
+them the ones they need. Use constructors, not getInstance. 
+	Expr,Stack,Statement,Vartab,Parsetools,Dialog
+	ex   st     stmt      vt      pt         dlg
+git diff is huge due to running astyle on the code.
+git log "singletons instead of statics"
+---
+GOAL: composition instead of singletons
+STATUS: astyle version is current, has compile issues
+	differs from committed version which is pre-astyle.
+PLAN: work with existing astyle version. 
+	TJ is only base class, eset and all globals.
+	TC instantiates all the singletons into TJ.
+		Use new, not instance.
+		Names: expr,stk,stmt,vt
+	Get that much to work, and commit.
+---
+Expr (and some others) compile. Tab 2 ./dump shows progress.
+	tc~49 instantiates the components.
+All changes made, all compile. 
+STATUS (5/16,7pm): reaches Expr~111, "execute fcn's body"
+	It passed through ~40, haveArgs==true, 
+	but BELOW is covered C code for parsing args.
+---------------------
+
+Tue, May 17
+Composition tidy not done yet. 
+	Lots of calls to statics.
+	All error codes should be moved into TJ.
+	TJ,PT,TC,ST need full class names.
+	Client calls to their fcns go via obj name
+		Constructors need to capture obj names
+			NEED args.
+Plan: stick to current goal, fix above incrementally as side goal.
+	POPERR, Stack~127. 
+BAD FEELING I am breaking more than fixing. 
+	Roll back ???
+git diff: Last commit was pre-astyle
+	I can apply astyle easily enough. ISSUE is I cannot readaly see differences
+	in code. But I have bak. May 15 and 16.
+new script df does 2 diffs on <arg>
+	15 vs 16 have diffs, 16 vs current IDENTICAL
+So reverting to 15 may be progress, but first study the diffs. 
+	Also above ~1131, May 14. 
+------
+	15 < has singletons. 16 > has singletons. 
+latest edit:    Expr.java~ vs Expr.java 
+	singleton code removed
+	_setArg C code added
+	getInstance calls removed (stk,vt,stmt)
+
+	TWIDDLE ~ diffs...
+ls *.java~ *.java -lt
+-rw-rw-r-- 1 tom tom  3948 May 17 09:15 Stack.java
+-rw-rw-r-- 1 tom tom  2126 May 17 09:07 TJ.java
+-rw-rw-r-- 1 tom tom  2442 May 17 09:02 TJ.java~
+-rw-rw-r-- 1 tom tom 14167 May 17 08:58 Expr.java
+-rw-rw-r-- 1 tom tom  3797 May 17 08:02 Stack.java~
+-rw-rw-r-- 1 tom tom 13633 May 16 19:14 Expr.java~
+-rw-rw-r-- 1 tom tom  7129 May 16 12:51 ST.java
+-rw-rw-r-- 1 tom tom  7097 May 16 12:50 ST.java~
+-rw-rw-r-- 1 tom tom  3409 May 16 12:45 Var.java
+-rw-rw-r-- 1 tom tom  3495 May 16 12:45 Var.java~
+-rw-rw-r-- 1 tom tom  4730 May 16 12:43 Vartab.java
+-rw-rw-r-- 1 tom tom  4968 May 16 12:42 Vartab.java~
+-rw-rw-r-- 1 tom tom  1816 May 16 10:13 TC.java~
+-rw-rw-r-- 1 tom tom  1881 May 16 10:13 TC.java
+-rw-rw-r-- 1 tom tom  5651 May 15 11:33 Dialog.java
+-rw-rw-r-- 1 tom tom  5663 May 15 11:33 Dialog.java~
+-rw-rw-r-- 1 tom tom  5129 May 15 10:24 Stuff.java
+-rw-rw-r-- 1 tom tom  4986 May 15 10:24 PT.java
+-rw-rw-r-- 1 tom tom  4251 May 14 08:27 Stuff.java~
+-rw-rw-r-- 1 tom tom  4237 May  9 11:46 PT.java~
+----------
+STRANGE end line of: df PT
+189909189909189909189909189909189909189909189909 PT 189909189909189909189909189909189909189909189909189909
+	followed by the correct line (^^...^^ PT, etc.)
+	Best guess: echo dumped it.
+---
+PT diffs (df) 
+	prettyfied, that is all.
+I need to understand status of each version
+	May 15
+	May 16
+	~
+	Current
+df shows 2 diffs, 15vs16 and 16vsCurrent
+tab 2 ls -lt: .java vs .java~:  clues what I changed
+but most changes seem to be prettifing. IS ~ stuff the best ???
+Actual code changes ~ vs current (exclude print.err stuff)
+	TC		uses global vt,stmt,expr,stk
+	TJ		statics removed, one final added
+	ST		none
+	PT		none
+	Dialog	none
+	Expr	< singleton, > setArg C code  (today)
+	Stack	main fixes
+	Stuff	none
+	Var		main fixes
+	Vartab	< singleton, ST stmt decl and = ...  removed
+These are edits to <May16 except Stack,TJ <May17.
+Maybe I just role forward with compiler helping find issues.
+-------------
+PT~53, lit uses cursor in static context
+	Why is lit static ???
+	removed ALL static mods from PT.
+	Dialog~6,126: ditto
+Status: compile/edit C code using ./jc to find stuff.
+	Covering really new stuff.
+	Goal is to get a good run of yesterday's status.
+---------------------
+
+Wed, May 18
+Uncovered BELOW. C to Java. 
+	Getting setArg~14 to work is the goal.
+	Call is at ~92, 99.
+---
+Stuff defines Type as an enum, and declares public Type type for each instance.
+Expr.setArg(Type type, ...) uses Type as a class name.
+	C VERSION...
+Type is an enum in tc.h, hence global. Used as fcn arg type: foo(Type t);
+How to do that in java ?  It needs to be a class, not an enum.
+---
+ABOVE code:
+	arg->top+1 of stack (stack size) Expr~35
+	nargs=0;  bumped for each parsed arg ~57, == args parsed
+BELOW code:
+	arg bumped for each parm parsed, ~94,101
+----------------
+More static issues...
+	ST.java:221: error: non-static method mustFind(int,int,char,int) cannot be referenced from a static context
+				int x = PT.mustFind(cursor,cursor+5,')',RPARERR);
+						  ^
+	src/tg37/tinyc/Vartab.java:43: error: non-static variable VARERR cannot be referenced from a static context
+				eset(TJ.VARERR);
+					   ^
+and more. 	
+TC.main~49... 
+		vt = new Vartab();
+        stmt = new ST();
+        exp = new Expr();
+        stk = new Stack();
+These inherit PT and TJ. 
+	vt is declared in TJ~11 as public
+	stmt in TJ~11
+	exp in TJ~8
+	stk in TJ~9
+PT.mustFind is not static. How does it acquire static-ness ???
+	The error agrees PT.mustFind is non-static.
+	The static context is ST~221, varalloc.
+---------------------
+
+Thur, May 19
+x	Cleaning out all statics except mains.
+NEED to move loadCode into an object context, so it can
+access 5 TJ non-statics: endapp,lpr,apr,pr,EPR.
+	Maybe TJ itself. Precedent is TJ.eset. 
+	Still complains: 
+		TJ.java:43: error: non-static variable endapp cannot be referenced from a static context
+        endapp = sb.length();
+        ^
+---------------------
+
+Fri, May 20
+./jc shows loadCode called from TC.main() without an object prefix.
+So it is still class code, not object. I need to put it into one of the objects:
+	vt,stmt,exp,stk,dl, OR a new one
+and call it with object prefix. None seem a natural home. So maybe the choice is
+put into the smallest, vartab. OR back in TC in its own class. That is natural.
+But a private class? It needs to be public if it ever becomes an MC. So the best
+is its own file as public class. OR back in TC.java...
+x	putting loadCode back into TC
+x	wrapping it into a public class
+It compiles! Crashes at ST~109, null pointer.
+	$ ./r TC foo.tc
+	running TC.main
+	  libs
+	
+	  globals
+	
+	  locals
+	Exception in thread "main" java.lang.NullPointerException
+		at tg37.tinyc.ST.st(ST.java:109)
+		at tg37.tinyc.TC.init(TC.java:47)
+		at tg37.tinyc.TC.main(TC.java:54)
+---
+x	Commit anyway.
+---------------------
+
+Sat, May 21
+Goal: find why ST~109 NPEs.
+	How did I get above~1437 to show stack trace, nut .r run now gives none.
+	ST added at() trying to find NPE cause. NEED to bracket the NPE.
+	Alternative is jdb SSing.
+Call from TC~64 to stmt.at(10064) works.
+Call from TC~66 to stmt.st() also works
+	getting at ST~12,16,17,186,NPE
+	TC is innocent.
+	pr must be null. ST: at12,16,NPE
+scanning code for 'pr' whole word ...
+x	Dialog
+x	Expr
+x	PT
+x	ST
+x	Stack
+x	Stuff
+x	TC  ~44, load code, set not declared
+x	TJ	~22, global data, declared not set
+x	Var
+x	Vartab
+---------------------
+$ jdb tg37.tinyc.TC foo.tc    > run   runs to end
+ref: 
+https://stackoverflow.com/questions/20018866/specifying-sourcepath-in-jdb-what-am-i-doing-wrong
+	jdb -sourcepath src -classpath target mypackage.Main
+---------------------
+
+Sun, May 22
+The duplicate progs happen via inheritance of TJ, the global data place.
+new ST gets its own copy of TJ, and ditto new TC, Stack, and PT. 4 copies !!!
+minor REFACTOR...
+x	remove 'extends TJ' from Stuff,PT,Stack,TC;   <<-- the "top 4" 
+	TC.init:
+x		instantiate: tj=new TJ()
+		pass tj to constructors of top 4
+	The top 4:
+		constructors have arg tj, and capture it.
+		also capture tj.xx as class var for direct communication to xx.
+			(do this on an as-needed basis)
+	They see all data via tj.whatever, tj.eset(int error), too.
+AUDIT of intermodule dependencies.
+	modified jc to clear,clean,compile one,dump all errors
+	removed extends TJ 
+	Running one one uncovered at a time.
+Dialog needs TJ, prog, error, endapp, ...
+Expr needs PT, TJ, Stuff, Stack, ...
+PT needs cursor, endapp, prog, eset, CURSERR, ...
+ST needs PT, Stuff, prog, ...
+Stack needs TJ,Stuff,POPERR
+	StackImpl  --  extends TJ
+Stuff needs prog, Type, TYPEERR
+Var
+Vartab needs PT, Var, TJ, prog, ...
+---------------------
+
+Mon, May 23
+CURRENT goal: composite instead of inheritance.
+STATUS: mods to jc,clean as survey tool. 
+x	Temporary, will have to put back when survey completed.
+x	Dialog (model for other fixes)
+	Expr
+	PT
+	ST
+	Stack
+	Stuff
+	TC
+	TJ
+	Var
+	Vartab
+---------------------
+Current hierarchy...(9am)
+	Dialog.java:public class Dialog extends PT {
+	Expr.java:public class Expr extends PT {
+	Stack.java:class StackImpl<Stuff> extends TJ {
+	ST.java:public class ST extends PT {
+	Stuff.java:class Sval extends Stuff {
+	Stuff.java:class Cval extends Stuff {
+	Stuff.java:class Ival extends Stuff {
+	Stuff.java:class Pval extends Stuff {
+	Stuff.java:class Fvar extends Stuff {
+	Var.java:public class Var extends PT {
+	Vartab.java:public class Vartab extends PT {
+---
+Simplify Stack.java ???  One class, no StackImpl.
+	NO: StackImpl knows about Stuff, but nothing else.
+		Stack has convenience tools like topdiff, toptoi.
+		Stack bridges between data and Stuff, wraps and unwraps.
+---
+TC.init builds the communication (tj) to TJ, and...
+	passes that to the top 5. Each constructor captures that and uses it to
+		capture local copy of exp,stk,stmt,vt,dl.
+Code it top 5 use these local copies instead of classNameDot or inheritance.
+x	Dialog
+	Expr
+x	PT
+	ST
+	Stack
+	Vartab
+Who owns cursor ???   TJ~35, initialized TC~62 (0 -> seed)
+	TJ is base class ONLY for StackImpl, which needs Stuff.
+	Do I add TJ to the 'top 5' list ???     <<==== YES
+ISSUE: PT cannot find cursor or TJ.cursor, 
+		but probably can find tj.cursor.
+PT joins the (now) top 6
+	is base class for Dialog,Expr,ST,Var,Vartab
+		but NOT Stack.
+---------------------
+
+Tue, May 24
+On a roll. Have done Dialog and PT. But in Expr hit Type issue.
+	Type is enum defined in TJ, used in Expr and 5 others. Adding a dot-tj
+	prefix doesn't work...
+			void setArg( tj.Type type, int arg ) {
+                         ^    "unexpected type"   
+	declared in TJ...
+		    public enum Type {CHAR, INT, FCN, STR };
+	It needs to be TJ.Type      <<<===
+---------------------
+
+Thur, May 26
+Might need to back out yesterday's work. Easier way is for constructor to
+declare needed communication links as class vars instead of dozens of tj-dot
+prefixes. Need to check recently changed sources. But hold on that for awhile.
+The work done is harmless, just unneccesary. Currently doing ST.
+-----
+Type confusion. 
+	Declared TJ~14, enum, includes FCN.
+	"unexpected type":  Vartab~134:   tj.Type.FCN
+	other usage: 
+		Expr,ST: TJ.type   
+		Stuff: declared as class var: TJ.Type type;
+			also usage: Type.FCN Type.INT, etc
+---------------------
+
+Fri, May 27
+Learned that java 5 added enum, and an enum is a class. Each value is an object.
+Each object is referenced via the enum name, dot, value. The custom is values
+are all caps, and because the enum is a class it has a leading cap.
+SO: TJ.Type.INT is an object. The objects have an API, but == is probably all I
+need. Type.FCN probably won't cut it. The current work of getting a full good
+compile will fix that. Stuff~188 is an example already flagged by ./jc.
+
+On the other hand the XXXERR codes will remain #defines, so tj.XXXERR is proper. 
+----
+Back to compile fixup...
+---
+Construtor issue. Getting complaint: "required: no arguments".
+The issue seems to be super class PT, base class for 5 parsing
+classes: Dialog,Expr,ST,Var and Vartab (for some reason.)
+	They all need access to tj. Some need access to other modules.
+The pattern of constructor calls WAS instantiate everything in TC's loadAndGo().
+But all the constructors have tj args, and capture their own tj. And PT, rtheir
+base class, does, too. 
+BETTER: the base class PT alone captures tj. The derived can add specials to
+that. 
+---------------------
+
+Sat, May 28
+TC.tj has "master" pointer to tj:  TC tj;
+	Inited by TC constructor;
+	TJ must copy this into class var,
+		derivatives therefore inherit their tj.
+default constr calls super(). NEED xx(tj) constructors. 
+x	Dialog
+x	Expr
+x	ST 
+x	Var
+x	Vartab
+x	TC.loadAndGo
+enum Type really should be in Stuff, not TJ.   <<== LATER
+COMPILES !!!! 6:55AM.
+x	Commit:    simplified inheritance, better composition
+---
+Compiles but crashes, null ptr exception.
+	Exception in thread "main" java.lang.NullPointerException
+		at tg37.tinyc.Expr.<init>(Expr.java:11)
+		at tg37.tinyc.TC.initAndGo(TC.java:58)
+		at tg37.tinyc.TC.main(TC.java:79)
+tj is null in PT's derivatives. NEED: super(tj) in each. 
+Each derived has own cp of PT variables. Can only get ther via
+derived constructor. Need to pass tj tp each/
+---
+Var does parsing. So extend PT is valid. 
+	Called when ST or ABOVE hit an 'int' or 'char'		
+	Parses and adds to vartab.	
+---
+More refactoring may be needed. Var and STuff should be pure data with only
+services ABOUT that data, like getValue(), etc. Vartab shoud be pure data
+structure with only code to service that structure. NEED VP, VarParse ???
+CURRENT Var...
+	Finishes parsing char or int.
+	Constructor with 5 args... 
+		builds the Var
+		grabs value if one is passed
+		curfun.put(name,this);
+	Only other code is toString()
+Var is really VarParse. But it is ALSO Var, the item entered into curfun.
+REMEMBER==>> don't put void as return value of a constructor  <<==REMEMBER
+Everything compiles, runs further, crashes somewhere in ST.st(),  NullPtrEx.
+	Loads & prints prog, 
+	'at' traces in ST: 22,180,192 and Expr~219.
+	cursor in seed ->main();]\n...
+It seems we are inside the compound statement, looking up main.	vt is null.
+new Vartab(tj) at TC~60, initAndGo(). AND Var~70, covered, test main.
+	So it is not duplicated.
+tclink should have put both libs and globals, call at TC~62.
+---------------------
+
+Sun, May 29
+Null vt, my technique is fragile and hard to debug ??? Maybe implement
+getInstance for PT and derivatives. Both TC and 'the five' build what they need
+in their respective constructors calling getInstance. Direct instead of ripple.
+x		getInstance() defined in PT,Dialog,Expr,ST,Vartab ('the five').
+x		new replaced by getInstance call in TC.loadAndGo() and the five's
+x		constructors.
+--------------
+Compiles, crashes in tclink: Vartab~103
+        int savedCursor=tj.cursor;
+    Has to be tj, decl'd: PT~9.
+Something is locking up my term tabs.
+There are 5 PTs, one each for the parse-five.  SEE ~1599 above.
+	OR eliminate, eg...
+	    static TJ tj = TC.tj;   // Dialog's copy, declared up in base PT
+	in Dialog is used eg to get tj.prog. BETTER is a local prog.
+STATUS: Vartab~104 NullPtrEx
+---------------------
+
+Tue, May 31
+        int savedCursor=tj.cursor;   <<== FIXED
+Compiles, tclink runs, does nothing, then crashes NPE.
+	Fix tclink first
+---------------------
+
+Wed, Jun 1
+ST needs tj defined, declared: PT~9
+I need to document the glue-plan. Study code in TJ, PT, Dialog, etc.
+----
+STUDY...
+$ grep "new Var" *.java -n                                 called from...
+ST.java:245:     new Var(isArray, type, alen, vpassed);      varAlloc
+Var.java:70:     Vartab vt = new Vartab(tj);                 test main
+Var.java:78:     new Var(true, Stuff.Type.INT, 1, null);     test main
+Var.java:87:     new Var(true, Stuff.Type.INT, 1, null);     test main
+Vartab.java:22:  instance = new Vartab();                    getInstance
+Vartab.java:150: new Var(false, TJ.Type.FCN, 1, kursor);     tclink
+	Only 2 calls do actual work: varAlloc and tclink.
+Writing document: glue.otd.
+---------------------
+
+Wed, Jun 1
+Finished glue.otd and git added it.
+	tj is null at ST~180.
+	tj.getInstance:
+		Stack.java:17:            tj = TJ.getInstance();
+		Stack.java:121:            tj = TJ.getInstance();
+		Stuff.java:18:		tj = TJ.getInstance();
+		TC.java:55:    	tj = TJ.getInstance();    // defines TC.tj, done first
+		TJ.java:18:    public static synchronized TJ getInstance(){
+		Vartab.java:24:            tj = TJ.getInstance();
+There are 2 'String prog;'   ST~6, TJ~31.
+	TJ's is the real one, loaded by initAndGo(). ST's is a convenience copy.
+	ST's copy is made BEFORE prog is loaded. Too early. Remove from constructor
+		and put into appropriate method with an if(null). It has to be early 
+		enuf, before any uses. 
+---------------------
+
+Fri, Jun 3
+Yesterday observed that prog is unloaded, hence null, when TC.tj et all are
+copied into the modules. 
+x	NEED to load the code into prog before propogating ptrs.
+x	Run got further, in main parsing 'foo.'    <<==  GOOD, BUT another NPE.
+x		crashed in tclink, NPE.    <<== FIXED
+---------------------
+
+Fri, Jun 3
+Infinite loop... 
+at Vartab: 138		<<== TOP: tcinit, symName hit
+at Vartab: 142
+at Var: 47
+at Var: 53
+at Var: 54
+at Var: 56
+at Var: 71
+vt: tg37.tinyc.Vartab@19469ea2
+curfun: {=: 4337}    <<== advances: 4337,4395,4437,4552,...   Var~73
+at Var: 73
+at Vartab: 144
+at Vartab: 146
+at Vartab: 148
+at Vartab: 152
+at Vartab: 162
+, at ST~180
+, at ST~192
+at Vartab: 138    <<== loop...
+at Vartab: 142
+	fname is 0 always. 
+---
+FLOW:
+	Vartab~138:  about 36 calls made in tclink to VT119,151; cursor advancing.
+	THEN it repeats with cursor back at 313. The loop is above tclink.
+		$ ./gj tclink
+		src/tg37/tinyc/TC.java:62:			vt.tclink();
+		src/tg37/tinyc/Vartab.java:106:     public void tclink() {
+down in varalloc cursor damaged ???  YES    	varAlloc call ST~212 
+	ST~228
+---------------------
+
+Sun, Jun 4
+varalloc has lname==0. Should not be called unless f/lname are defined.
+	Wierd logic...  BUT exactly mimics the C version. Probably '77, too. 
+		if(!symName()){eset(..);return;}
+		cursor=lname+1
+	lname should be defined. Is the bug in symName ???  PT~72
+		symName defines f/lname and returns true.
+			  PT~78: fname 4829
+			  PT~78: lname 4833
+				 ST~238: cursor 4829
+				 ST~240: cursor 1
+        ST~239: tj.cursor=lname+1;
+    So the BUG is two copies of f/lname.   <<== FIXED. static f/lname.
+    	And maybe all those strings should be static.  LATER.
+Goal: tidy the code.  DONE
+New crash, trying to pop an empty stack. Stack~136. 
+	eset was set, but no call to whatHappened, hence to exit properly.
+Goal: java-ize whatHappened().
+	code is deep in BELOW, call to stmt.st() to execute fcn body.
+eset now calls whatHappened, and then exits. 
+	So all the tests if(tj.error!=0) are redundant.
+infinite recursion...
+	at tg37.tinyc.TJ.<init>(TJ.java:22)
+	at tg37.tinyc.TJ.getInstance(TJ.java:27)
+	at tg37.tinyc.Dialog.<init>(Dialog.java:8)
+	at tg37.tinyc.Dialog.getInstance(Dialog.java:12)
+====================
+    private static Dialog instance;
+    private Dialog(){
+    	tj = TJ.getInstance();   <<== BAD, causes infinite loop
+    }
+    public static synchronized Dialog getInstance(){
+        if(instance == null){
+            instance = new Dialog();
+        }
+        return instance;
+    }
+-------------
+    private TJ(){
+    	exp=Expr.getInstance();
+    	stk=Stack.getInstance();
+    	stmt=ST.getInstance();
+    	vt=Vartab.getInstance();
+    	dl=Dialog.getInstance();
+//    	pt=PT.getInstance();
+    }
+    public static synchronized TJ getInstance(){
+        if(instance == null){
+            instance = new TJ();
+        }
+--------
+There are 5 derivatives. 
+Breaking the loop: EACH derivative constructor:  tj = TC.tj; 
+	NOT getInstance().
+There is only one TJ. The derivaative copy is convenience, and further 
+convenience is added by the TJ constructor. TJ tj is available FIRST so those
+conveniences can be added as needed by derivative constructors. That way what
+would be  TC.tj.prog becomes simply tj.prog, and TJ.exp.asgn() becomes
+exp.asgn(). There will always be that single prefix. 
+	TJ is acting as a header file. It should own all globals.
+	PT is a base class for parsing, common tools plus pointers to modules.
+	TC is a pure loader/launcher. It owns only what it needs plus the seed copy
+		of TJ tj.
+	"Parsers" is terminolgy for derivatives of PT, "modules" for all the
+		singletons, all but PT, Stuff, Var.
+---
+parse error 9, TJ~73:    int SYNXERR =      9;
+GOAL: make whatHappened java-ized, Dialog~139
+---------------------
+
+Tue, Jun 6
+Dialog~147 lpr is 0. 
+	TC~40 lpr=startSeed.length();   <<==  too late ???  NO, 
+	duplicate tj ???   NO
+	I need a watch on tj.lpr. 
+		./gj lpr turns up only one assign: TC~40, set to 9, seed's length.
+		Interesting that ERR is 9, SYNXERR.
+		eset() TJ~32
+NEW tool: debug. Starts jdb session...
+	jdb -classpath ./cls -sourcepath ./src tg37/tinyc/TC foo.tc
+	> run     <<== runs: foo.tc is loaded, runs, exits TC, exits jdb.
+	trying: stop in TJ.eset,  then > run...
+		ran to end, did not stop.  
+	trying: stop in Expr.asgn. FAILED.
+	trying: stop in TC.main
+	trying: stop in tg37/tinyc/TC.main
+	trying: stop in TC:initAndGo
+---------------------
+
+Tue, Jun 6
+	For some reason String prog MUST be static, but int ...,lpr cannot. Why?
+	Accesses to tj data use BOTH tj-dot AND TJ-dot. 
+	TC~40:		tj.lpr=startSeed.length();   <<-- works, sets to 9.
+	Dialog~138:	..println(.. tj.lpr);        <<-- prints 0.
+	$ grep "tj[\;|\ ]" *.java
+		TC.java:    public static TJ tj;
+		TC.java:	tj = TJ.getInstance();
+		
+		Dialog.java://    static TJ tj;
+		Dialog.java:    tj = TC.tj;
+		
+		PT.java:	public static TJ tj;   // base class for the parser 5
+		PT.java:	public PT(){ tj = TC.tj; }
+		
+		Stack.java:	static TJ tj;			// singleton tool
+		Stack.java: tj = TJ.getInstance();
+		Stack.java:	static TJ tj;
+		Stack.java: tj = TJ.getInstance();
+		
+		ST.java:	tj = TJ.getInstance(); // one of the parser 5
+		
+		Stuff.java:	static TJ tj;          // multiple instances
+		Stuff.java:	tj = TJ.getInstance();
+		
+		Vartab.java:  static TJ tj;			// another parser 5
+		Vartab.java:  tj = TJ.getInstance();
+inconsistencies...
+	Stuff and Var have multiple instances, but only Stuff has an above hit.
+	ST tj= is redundant. It inherits PT's already set tj.
+	Why does Stack do it twice ???	(StackImpl)
+---------------------
+
+Thur, Jun 9
+Fixes to above...
+	Stack: 2nd is StackImpl
+	Var: ~50,51,63,73 hits. Only the constructor so far.
+	ST: ~15. extends PT.
+run with no change...
+	running TC.main
+	TC~41 lpr: 9
+	Expr at: 163 lpr: 0
+	asgn~162: [
+	reln~187: [
+	expr~233: [
+	term~270: [
+	factor~311: [
+	Expr~33, eset, lpr:0
+	Dialog~138: errat,ERR,lpr = 0 9 0
+	app line 1 (cursor prog[0])DONE
+with ~15 covered...  NPE. So ST~15 is needed. 
+ISSUE is other derivatives ???
+	Dialog	no, but copies TC.tj.
+	Expr	no
+	ST		yes
+	Var		no, only constructor so far, and not called in this test.
+	Vartab	yes
+ISSUE: PT has tons of final non-static data. Each parse-5 gets own copy ???
+	Should be static. 
+	Its constructor initializes tj by cp from TC.tj. 
+		parse-5's need super() call.
+---------------------
+
+Fri, Jun 10
+~1847 above...
+Goal: fix inconsistencies...
+x	static PT data 
+x	all convenience ptrs done in same manner: use getInstance calls, not copies.
+	
+		Dialog
+		Expr
+		ST
+		Var
+		Vartab
+ST~9 COVERED: Reduntant st= may be harmful.  Tested, same result. lpr still 0.
+ST~15 is mystery. If covered get NPE. 
+	TRY: super() call ~9, ~15 covered
+MYSTERY: ST super() call ~9 does not set tj, ~15 does.
+	ST has String prog, ~9   <<== is this cpy initialized? YES, ST~16.
+	TJ owns String prog, ~41,    <<==  this is the one loaded...
+		TC~43:  tj.prog = new String(sb);
+---
+Back to lpr zero issue. Decls involved: TJ~42.
+	I recall narrowing instead of watch, ~1824 above.
+	TJ~42 owns lpr, it is NOT static.
+Made lpr (and others) static. Evidence changes: ST~163 prog is null. tclink().
+	Chase this down. Assume static lpr is case closed.
+STATUS:
+	running TC.main
+	TC~41 lpr: 9
+	Vartab~110, lpr: 9
+	Expr~33, eset, lpr:9
+	Dialog~138: errat,ERR,lpr = 0 0 9       <<== GOOD
+	done   <<--  from TC Dialog~179, whatHappened.
+	DONE   <<--  from ./r
+---------------------
+
+Sat, Jun 11
+STATUS:
+	lpr is behaving. eset(TJ~33), not sure the call.
+	eset should do stack trace.
+Thoughts:
+	TJ is getting lots of statics. There is only one fcn, eset(), which can be
+	moved to PT as part of parsers base class. AND no instance of TJ. All
+	access uses TJ-dot instead of mix of that and tj-dot. I think that is
+	cleaner. No need for statics. LATER
+tclink is not on the stack. In ST.st(), 2 levels, then asgn stack, 2 more st(),
+asgn stack, eset. Cursor not known yet.
+GOALs: 
+	Also make whatHappened more useful.
+		cursor
+		code segment
+	Expr.factor~378 call to eset...  
+			trying to parse just ']', so factor fails, properly.
+			probably parsed foo, and entered, and did nothing. 
+			No MC call ???,   OR maybe it did ???
+		running TC.main
+		factor~311: main();]/
+		factor~311: foo ]
+		factor~311: ]       <<==  foo got parsed !!!
+		TJ~33, eset, lpr:9
+running TC.main
+factor~311: cursor 1 -->mai
+factor~311: cursor 5533 -->foo
+Expr~52: enter(5503)
+ ->  [
+	pl "f
+Expr~59
+Expr~71      <<==  pl is parsed
+Expr~75, have args    <<== in enter ABOVE
+asgn~163: ]      <<==  arg is parsed, string to be printed
+reln~187: ]
+expr~233: ]
+term~270: ]
+factor~311: cursor 5537 -->]
+TJ~33, eset, lpr:9
+----------
+STATUS: june 11 6pm: debuggin enter's handling of the string argument. 
+	have args is true, parsing of arg unobserved, cursor-->']', asgn called.
+	Why is cursor advanced, but no arg is on the stack, Expr~
+		Was 'pl' parsed ???, are we watching pl's handling by enter ???
+---------------------
+
+Sat, Jun 11
+Thought: println in Konst: Expr~406 will detect parsing a quote.  <<== NO HIT
+	So what moved the cursor to the ']'  ???
+		Expr~52: enter(5503)
+		 ->  [
+			pl "f
+		Expr~58 cursor: 5537
+		 ->  [
+			pl "f
+		Expr~60 cursor: 5537
+		Expr~62 cursor,haveArgs: 5537 true
+		Expr~71, ]       <<== between ~52 and 71, 
+The traces are entering foo, not pl.
+	Parsing pl is still unobserved. 
+---
+
+1		foo [                      5->[
+6			pl "foo is here"       7-->pl
+24		]
+26		main [ foo ]               31-->[    33-->foo
+
+cursor: add 5500 to above, e.g. 5533-->foo 
+Dialog~138: errat,error,lpr = 5537 9 9
+---------------------
+
+Sun, Jun 12
+
+interpreting the trace
+seed is parsed and main, 2 ST~29s.
+	main's body executed, ST~29, 
+	body entered and 4th ST~29 to parse foo...
+		factor~311  cursor 5533-->foo
+	foo must get parsed and enter~52 where: ~5503
+		->  [...    cursor set to foo's body
+	~58,60,62       cursor still at body, [ not parsed yet
+		~62 have args true implies ps is parsed, no other fcn has args
+		BUT still not direct evidence of ps being parsed.  ???
+	~71             cursor advanced to ]    <<== main's body end
+---
+NEED: parsing of pl and ESPECIALLY its arg. 
+WHY does ~62 set haveArgs true <<== should it be testing xlbrk ???
+FIXED, maybe. Exact mimic of C code is cleaner, and behavior was BETTER.
+	An eset happened MUCH later. Probably parsing pl ???
+x	tidy, remove the debug println-s, at()-s.
+		lpr lingers: TJ~33, Dialog~138
+Status: parsed the arg, parsing the pl param...
+eset now dumps from cursor-10 to cursor+10
+		TJ~33 eset: lpr:9
+		Dialog~138: errat,error,lpr = 1121 3 9
+		pl char b(0) [
+			MC "
+Probably new code is needed BELOW to handle the parameter.
+---------------------
+
+Mon, Jun 13
+Testing a WhatHappened fix...
+	foo call works, foo is calling pl...
+STATUS: cursor is in lib, on pl's arg. This is a fresh problem, probably BELOW
+needs work. This is the first arg parsed by this code.
+---
+FIXED: ISSUE: have infinite loop problem: Dialog~165.
+---
+Working on Dialog.whatHappened()... 
+	Shows erroneous line, ~171: just the text between newlines.
+	Simpler code
+GOAL: 
+	arg/parm: make it work. 
+	Then the MC 1.
+------------------
+	Doing setArg, Expr~33
+---------------------
+
+Tue, Jun 14
+Forgot to commit after above bug fix. Now further changes don't compile.  
+Expr is all messed up. Newly uncovered code: setarg. Re-covered it, compiles,
+runs, COMMITed.
+Goal: ~2050 above.  PUZZLE: java code this line... 
+    vp.up = *((char**)(*arg).value.up);
+~34 resolves *arg...
+		Stuff vp = stk.peek(arg);       // passed Stuff
+arg is a pointer into Stack, so *arg is a pushed pointer to a pointer in pr.
+C code put values into pr. Java code puts values into Stuff, on the stack. So
+how will y=x(7) git pushed? y will be an lvalue. x(7) should be a resolved
+Stuff. But this case is: char x(0), x="something". x is a pval.  
+Specifically...
+	ps "something"   arg is an Sval, Stuff~102. The string is on the stack. We
+	don't have to dig it out from pr. We should test it is an Sval, and if not
+	convert it to an Sval. DO THAT LATER. For now just leave it on the stack and
+	MC will consume it. 
+So the fix for now is a todo comment.
+ISSUEs...
+	Stuff~103: an Sval is not an array, but it has length.
+	Stuff~163: not sure what a Pval really is, but might be useful when
+		understood.
+	Sval may only be quoted strings, 
+		and char arrays are char Cval with isArray == true. 
+---------------------
+
+Wed, Jun 15
+About Stuff:
+	Originals are in the vartab Maps. Clones are put onto the stack.
+	Type t, int len, boolean lvalue, boolean isArray   <<-- constructor parms
+	   1       2           3                4
+	    Sval(String v) {              ~100
+        super(TJ.Type.CHAR,v.length(),false,false);
+    Cval(char v, int len) {           ~120
+        super(TJ.Type.CHAR,len,true,false);
+	class Ival extends Stuff {        ~140
+		Ival(int v, int len) {
+			super(TJ.Type.INT,len,true,false);
+	//	Probably same as Ival with isArray true. Keep it for now.
+	class Pval extends Stuff {        ~163
+		int kursor;
+		Pval(int v) {
+			super(TJ.Type.INT,1,true,true);
+			kursor=v;
+			isArray=true;
+All have:
+	abstract public int getInt();  <<== but return ints have different meanings
+		fcn: where , ptr: 
+    public char getType() {        <<== 'F', 'I' ,'C', or 'S'
+creations in parsers:
+	Ival: Expr~377(konst), 217..278(7 pushk)
+		Stack.pushk~69..83, (pushk/one/zero) 
+	Sval: Expr~390(konst)
+	Cval: Expr~404(konst)
+	Pval: Vartab~141(tclink fcn name, int value just past the name.)
+---------------------
+
+Thur, Jun 16
+setArg needs to create a local using the clone on the stack with the parsed parm
+name. Because of the wrapper Stuff it should be simpler. It must be a klone, not
+a ref to the callers copy, which is in vartab. That is the C definition. So
+check that what is on the stack is a clone.
+	The C version has a wrapper, too, union stuff. _setArg uses a local union
+stuff vpassed = (*arg).value ref to the stack copy, creates a clone using
+_varAlloc which parses the name and (..) if present for arrays. _varAlloc is
+used only for char/int, not for functions.
+	eq(), by the way, needs an lvalue's ref on the stack because it must change
+the value. So Stack must have aids to make these two cases easy. They differ.
+---------------------
+
+Sun, Jun 19
+Taking a short rest. Still working to parse: pl "foo is here". ~2115 above.
+Since last commit (Tuesday) only code changes are in setArg(). Plus thoughts
+above, ~2115. At ~2118: is it a clone? The push should be in enter ABOVE. (The
+above/below divide is at Expr~84.) The "push" is an asgn() call at ~68.
+	compile status: 6 symbol errors: Expr~39..45, setArg...
+
+ /* Situation: parsing argument declarations, passed values are on the stack.
+ * argp points into stack to an argument of type. 
+ * Gets actual value of arg, calls valloc which parses and sets
+ * up local with the passed value.
+ */ 
+	void setArg( TJ.Type type, int arg ) {
+		Stuff valPassed = stk.peek(arg);
+/*
+		boolean isarray = valPassed.isArray;
+        boolean lvalue = valPassed.lvalue;
+        TJ.Type stacktype = valPassed.type;
+        if( lvalue) {
+            where = valPassed.up;
+            if( isarray ) { 
+//                valPassed.up = *((char**)(*arg).value.up);
+                 
+            } else
+            if( stacktype==Int ) valPassed.ui = get_int(where);
+            else if( stacktype==Char) valPassed.ui = get_char(where);
+        }
+*/
+        varAlloc( type, valPassed);
+    }
+---
+Expr~156 has copy of stack fcns   <<<<<<<<<<============== fix later
+Flow of a function call...
+	asgn..factor, symname~304, isFcn, enter(where) call ~327
+	ABOVE parses args, 
+	BELOW moves cursor to where, parses/sets parms, executes body.
+So why does setArg have me so puzzled ????????
+---------------------
+
+Mon, Jun 20
+Simplified setArg compiles, runs, but fails to parse the ) of the arg.
+	ps declares arg char b(0), parses the b(0. varAlloc issue, ST~202.
+new dump in PT: dumpSym()
+MEMORY...
+	call to setarg at Expr~108
+	setarg defined at Expr~33
+	trying to trace the code parsing:  ps b(0) [...
+	where is subscripted arg parsed ???  
+		Expr~104 (BELOW) call to setArg(), Expr~33
+		AND setArg is what I am recoding. 
+		It calls varAlloc, ST~202, which does the parsing. 
+		
+---------------------
+
+Wed, Jun 22
+	Expr~67, haveArgs, error0
+	Expr~100, char arg	<<-- before setArg
+	ST~203, varAlloc,   <<-- in varAlloc
+	ST~209, varAlloc,   <<-- symName parsed OK, about to do lit("(").
+	Expr~108, char arg  <<-- after setArg
+	Expr~131, error: 0  <<-- symName parsed, about to call st()
+	ST~127, progAt: )   <<-- st() fails, cursor not at [.
+	TJ~33 eset: 
+	lib line 61 (cursor prog[1122]): STATERR
+	pl char b(0) [
+			   ^
+flaw detected between Expr~108 and 131, happens in setArg.
+	Evidently parses the 0 but not the ). Problem seems to be in varAlloc.
+		varAlloc works fine for linking. 
+	trace varAlloc: 
+ST~211, changed cursor=lname+1 to =lname. Big behavior change. <<=== FIXED
+Covering varAlloc trace dumps.
+---
+new bug: ARGSERR, app line 4: cursor -->]. 
+	Is pl enter, one arg, one parm.
+		java.lang.Exception: Stack trace
+			at java.base/java.lang.Thread.dumpStack(Thread.java:1383)
+			at tg37.tinyc.TJ.eset(TJ.java:37)
+			at tg37.tinyc.Expr.enter(Expr.java:123)
+	Expr~120, nargs,arg,stk.size: 0 1 2  <<== BELOW after parsing the parm.
+	Should be       1 1 1    or   1 2 2
+---------------------
+
+Thur, Jun 23
+asgn() failed to parse the argument string, Expr~73. Returned false.
+	konst returns a new Sval with the quotes properly stripped.
+---------------------
+
+Sat, Jun 25
+	The string arg was parsed correctly. setArg, Expr~35. VALID ARG on stack.
+---------------------
+
+Sun, Jun 26
+I need to narrow the bug search. All seems well at Expr~35. First clue of
+trouble is Expr~107, 0 0 1. Should be 0 1 1. So its bracketed. What is suppose
+to happen between ~35 and ~177 ???
+The stack has enter() at Expr~141, the call to st(). 0 0 0 there. GOOD.
+At ~107: 0 0 1. Something got pushed onto the stack. 
+---------------------
+
+Mon, Jun 27
+	Expr~399, x: should be quote: 5522-->"     <<== konst parsing arg
+	Expr~406 -->foo is here<--			       <<== parsed 
+Expr~77 AFTER args parsed: nargs,arg,stk.size: 0 0 1  <<== Stuff is pushed	???
+		enter ABOVE ~53..90, BELOW for loop ~98..124, 
+			failed test ~128, st call ~134.
+	Expr~106, char arg   <<== BELOW
+	Expr~107, nargs,arg,stk.size: 0 0 1  <<== this should be the arg. 
+	Expr~35 setArg: foo is here
+	Expr~378, cursor-->0
+	Expr~125, nargs,arg,stk.size: 0 1 2
+	TJ~33 eset: 
+	app line 4 (cursor prog[5524]): ARGSERR, args don't match
+---
+Reading tc.c, 1021 lines
+	varalloc 252 - 272	20
+	setarg   279 - 296	17
+	enter    307 - 391	84
+	konst    411 - 457	46
+	st       756 - 863 107   tidied to 296 lines, printed.
+I will need to correlate java dump ~'s to lines in this document
+---------------------
+
+Wed, Jun 29
+Midnight awareness: 0 0 1 is OK. The test is arg=size-1. But I need to be
+carefull the pop loop does just one pop. Code change ~128 now and test run. Should
+bomb on MC call, which is the next chore. Maybe foo.tc runs today. If so rename
+it tests/one.tc, for tidyness.
+	Now bombs in seed, argserr. 0 0 0. UGH! Roll back the ~128 change.
+My new reasoning is arg 1 goes into stack cell 0 and stacksize is 1. OK, issue
+is bumpint arg. It has to be 0 1 1 ??? Seed has 0 args. It bombed on 0 0 0 with
+the ~128 edit. And shouldn't it be 1 1 1? nargs should also be bumped. 
+	Likely the issue is in setArg. It needs to bump BOTH nargs and arg ???
+Read the C code... enter() bumbs nargs above, and arg below.
+	Java code enter~74 bumps nargs, ~103 args. 
+	This code is not being reached.	Why???
+~69 reached error 0
+~74 asgn() called...
+                if( asgn()) ++nargs;
+                else break;  // break on error
+The bump did not happen. SO asgn FAILED ???
+	asgn() did reach konst, cursor+-9 dump and Expr~399 (cursor->") OK. ~406
+	shows parsed string (foo is here). Then AFTER, Expr~77, stk size DID GET
+	BUMPED 0 0 1. The arg was pushed but asgn returned false.
+FIXED. asgn now returns true. Runs to end. MC call happened!
+GOAL: cover all those dumps except expr~411 showing parsed arg.  DONE...
+		running TC.main
+		Expr~411 -->foo is here<--
+		Expr~411 -->%c%s<--
+		DONE
+git COMMIT   DONE
+---
+GOAL: enable MC 1. Call is at Expr~323.
+MC is 458 loc. I want a simplest one. Plan is remove MC 0 stuff, and do just
+MC 1 for now. Then grow it for future tests. The clever call method via arrays
+of &name needs a java equivalent. Best guess is MC base class, and each &name
+when done extends MC. 
+	https://stackoverflow.com/questions/9886266/
+		is-there-a-way-to-instantiate-a-class-by-name-in-java
+method 2...
+	Class<?> clazz = Class.forName("com.foo.MyClass");
+	Constructor<?> constructor = clazz.getConstructor(String.class, Integer.class);
+	Object instance = constructor.newInstance("stringparam", 42);
+An array of pointers to MC objects, initialized to null...
+-----
+	class MC {
+	  static MC origMC[] = new MC[15];   // array of machine call objects
+	  public abstract int mc(Stuff args[]); // each must define
+	} 
+	class Mput extends MC {
+	  Mput() {
+		if(origMC[1]==null)origMC[1] = new Mput();
+	  }
+	  int mc(Stuff args[]){ 
+	  	System.out.print(args[0]);
+  	  }
+  	}
+  	MC.mc('x',1);
+---
+Mfilrd (mcno 103)  has 3 args: name,buff,len. Call from library was
+	MC("foo",buf,10,103); 
+from app
+	readfile("foo",buf,10);
+lib code...
+readfile char name(0), buff(0); int len [
+        return MC name, buff, len, 103
+]
+--------- 
+Ref: code from... 
+https://stackoverflow.com/questions/2752192/array-of-function-pointers-in-java
+
+public interface Worker {
+  void work();
+}
+class A {
+  void foo() { System.out.println("A"); }
+}
+class B {
+  void bar() { System.out.println("B"); }
+}
+A a = new A();
+B b = new B(); 
+Worker[] workers = new Worker[] {                    //<<-- array
+  new Worker() { public void work() { a.foo(); } },  //<<-- initializers
+  new Worker() { public void work() { b.bar(); } }
+};
+
+for (Worker worker : workers) {
+  worker.work();               // <<-- how to call
+}
+---------------------
+
+Fri, Jul 1
+Currently designing how to code MCs starting with MC 1. Invoke logic is a bit
+more complex than C's two liner. Have mcno and args on the stack. Need to build
+args array, pop the args, new via String name, return MC.mc(Stuff[] args). A
+Stack fcn Stuff[] argsToArray(nargs){..} would be helpful.
+STATUS: code for MC 1 plus the MC infrstructure being debugged.
+---------------------
+
+Sat, Jul 2
+Debugging MC ~ 46..58. Expr~85 call to machinecall, enter above.
+Have MC getInstance code, NEED to call it in TC.loadAndGo. But leave machinecall
+static? For now, yes. Only the one call from enter() ABOVE.
+---
+TRY: MC is abstract, and has     protected abstract Stuff mc(Stuff[] args);,
+	which is overridden in all the little MC classes. 
+Compiles. Runs to pl() and hits MC 101. Parses one arg, not all 3. POPERR.
+	enter Expr~85, ..., MC~126 is reached. 
+Don't need Stack.argsToArray(), as machinecall~126 does that. 
+NEED to study enter() more closely.
+----
+Expr~75, parsed an arg, nargs: 1
+reln~187:  
+expr~233:  
+term~270: 1
+Expr~378, cursor-->1
+Expr~75, parsed an arg, nargs: 2
+reln~187:  
+expr~233:  
+term~270: b
+Expr~378, cursor-->b
+Expr~75, parsed an arg, nargs: 3       
+Expr~77 AFTER args parsed: nargs,arg,stk.size: 3 0 2
+MC~124, mcno,nargs,stackSize: 10 3 1
+TJ~33 eset: 
+lib line 62 (cursor prog[1145]): POPERR, nothing to pop
+	MC "%c%s", 10, b, 101        <<==  4 args, 101 not parsed, 
+                   ^
+---
+Expr~378, cursor-->1
+Expr~75, parsed an arg, nargs: 2
+   cursor-->, b, 101
+
+reln~187:  
+expr~233:  
+term~270: b
+Expr~378, cursor-->b    <<== parsing 'b' ate the following comma, Expr~74.
+	Issue is down in asgn-stack. 'b' is a sym, not a konst.
+Expr~75, parsed an arg, nargs: 3
+   cursor-->101
+]
+---------------------
+
+Sun, Jul 3
+Need to study the parsing of arguments, why did parser eat the comma ???
+Expr~328..372: symName, all cases except MC are covered. ~363, simple variable 
+is now uncovered.    <<== 
+pushst CONFLICT, there is an old one and the old push was renamed, should be
+pushStuff. Expr~319, Stack~28,75,80,98. FIXED.
+C has 15 hits on pushst. stack.c~38 defines: //basic pusher. It wraps the
+symbol into a stack entry struct. For java that is new Xval, i.e a Stuff. The
+new basic push is pushStuff(Stuff s), Stack~28. Convenience pushers are:
+	pushk,pushone,pushzero,pushPtr. These take datum args and wrap them in a new
+Stuff of appropriate subtype. 
+---------------------
+
+Tue, Jul 5
+STATUS: code not ready, doesn't compile. Expr~364..370.
+The old 'class' is now dtod (distance to datum). int, 0 or 1. Defined Expr~337,
+used one Stack~47 in a comment. BUT dtod is now 'boolean isArray'. Lots of use,
+defined: 
+	expr~243	boolean leftIsArray = (stk.peekTop()).isArray; 
+	ST~204		local in varAlloc
+	Stuff~14	boolean isArray;  // used to be 'class,' 0 for datum 1 for array
+		attribute of Stuff
+	Var~10		attribute of Var.  <<== ???  seems duplicate. Can Var be
+		simplified by making one of its attribute Stuff? 
+Stuff vs Var...
+Stuff
+    public TJ.Type type;          // CHAR, INT, FUNCTION
+    public int len;            // 1 for datum, else length of array
+    public boolean lvalue;
+    public boolean isArray;    // used to be 'class,' 0 for datum 1 for array
+Var
+    String name;
+    boolean isArray;   <-- ?
+    TJ.Type type;   <-- ?
+    int len;   <-- ?
+    Stuff value;
+My Guess is: value may be null, but Var the needs other data, maybe to new up a
+Stuff. Needs review, but leave for now.
+---------------------
+
+Thur, Jul 7
+FOCUS on code that will invoke MC and print at least the char, or maybe the
+string. Status at ~2405. dtod seems to be gone, now isArray. Uncovered C in
+Expr~364..370.
+C code: _factor defined tc.c~596.
+===================
+	NEW DISCOVER: I have a tcc good compile of tiny-c. It runs MC12.tc OK.
+===================
+	It compiles and crashes, seg fault. So the code needs debugging.
+---------------------
+
+Sat, Jul 9
+Back to the J version. Goal is to print that string.
+	expr~411 (konst):   -->foo is here<--
+	expr~77 ABOVE, nargs,arg,stk.size: 1 0 1   <<==  is this good ???
+		YES. arg ~54 is stack size before the push. index into stack to the 
+		first arg. Other 2 are after the push. 
+			asgn()~74 is doing the push.
+	Expr~411, cursor in lib line 62 parsing MC 101, 3 args...
+			MC "%c%s", 10, b, 101
+					   ^
+101 implements printf. 
+	Expr~75 does parse 3 args. cursor dump ~75 shows ONLY 10 chars
+		Expr~75, parsed an arg, nargs: 1
+		   cursor-->, 10, b, 
+		reln~187:  
+		expr~233:  
+		term~270: 1
+		Expr~378, cursor-->1
+		Expr~75, parsed an arg, nargs: 2
+		   cursor-->, b, 101
+		
+		reln~187:  
+		expr~233:  
+		term~270: b
+		Expr~378, cursor-->b
+		Expr~75, parsed an arg, nargs: 3
+		   cursor-->101
+		]
+		
+		/*
+Expr~77 AFTER args parsed: nargs,arg,stk.size: 3 0 2  <<== is THIS good ??? NO.
+	Why not 3 0 3 ???       <<===  EARLIEST FLAW --^   so far.
+---
+Expr~75, parsed an arg, nargs: 3
+   cursor-->101
+]
+
+/*
+Expr~77 AFTER args parsed: nargs,arg,stk.size: 3 0 2
+MC~124, mcno,nargs,stackSize: 10 3 1
+TJ~33 eset: 
+lib line 62 (cursor prog[1145]): POPERR, nothing to pop
+	MC "%c%s", 10, b, 101
+	           ^            <<== cursor position may be flawed.
+---------------------
+
+Wed, Jul 13
+Need to find the code to java-ize parsing ~2478 above. 
+	Expr~352..362, char array. Arg 'b' is the quoted string to be printed.
+		/* put a null terminated string
+		ps char b(0) [
+				MC "%s", b, 101
+		]
+Walk thru code from parsing the ps parm: char b(0), ABOVE.
+cursor at ps call somewhere...
+	Expr~321 (factor): ps parsed, ~342 is a fcn, ~345 call enter()
+		cursor-->"string to print"
+	ABOVE: ~53 string parsed and pushed
+rest...   <<== trouble making this clear. Next 10 lines need work  <<<===
+	cursor moved to ps's where:    cursor->char b(0)
+	enter(): 
+		ABOVE: Expr~53
+			local frame created
+			param b parsed, into local, char array, st() the body, MC parsed
+			cursor bumped to MC args
+		BELOW: parse params loop, Expr~99..126;   b(0) parsed
+			MC called, have args loop: ~68..78    <<== here be the issue
+			enter():
+			ABOVE: asgn called: ~74
+================= SIDE NOTE ====================
+Read Ed Davis's improvements, which I stumbled onto somewhere. Not sure where. 
+	~/tom/Projects/orig_tc/tiny-c/tc.c
+-------------------------
+BUT also found walk thru for enter !!!     <<==   See the following: |||||
+                                                                     vvvvv
+~314: Look for all punctuation that means there are no arguments.
+~323..327: parse all the args. Note that commas are required to keep this loop
+going.
+~330: skip optional right paren.
+~331: advance cursor over remark and/or newline if present.
+~332..340: test for and handle machine call special case. (There must be at
+	least one argument, the MC number. ~333 nextstack seems a poor choice to
+	test, 0 means empty stack. A better test would be nargs. I document here the
+	code the way it is, not the way it could be.)   
+~339: return for this case. Machine calls do not do BELOW code.
+~341..391: The fun stuff begins!
+~343: save the cursors.
+~345: open a new stack frame for locals.
+~346..~371: parse the declarations creating locals in the new stack frame.
+	Initialize them with the values stacked ABOVE. _setArg does that. Down count
+	for each arg, and the loop ends when there are no more declarations. Assume
+	for now a fixed number of arguments. The varargs case is treated later. 
+~383: if no error execute the body. It is a compound statement, therefore a call
+	to st suffices. 
+~384: st() may or may not push a resulting value. leave is true if it did.
+	Otherwise push a zero. We need that because _enter must always return a
+	pushed value.  
+~386..389 cleanup: restore the cursors, pop the locals variable frame (fundone),
+	advise the debugger we are leaving a function. 
+
+Above ~'s match the source at ~/Projects/orig_tc/tiny-c/tc.c.
+================= end SIDE NOTE ====================
+5pm: GOAL is to finish code that will run foo.tc and print the string.
+	- Switch to MC101 as first to enable. It prints a char array.
+	- Audit the code vs above walk thoughs. Do they help? What more will help?
+Enuf for today!
+---------------------
+
+Thur, Jul 14
+working on Expr~352..374 code
+NEED walkthrough of factor. Using xed, adding notes: factor-14july.txt.
+			/* put a null terminated string
+			ps char b(0) [
+					MC "%s", b, 101
+			]
+When b is parsed it is local, put there by ABOVE parsing arg: 'b(0)' 
+	Is b lookup succesful ???
+---
+type issue. Is it a Type or an int or a TJ.Type ??? 
+	Type: 39 hits: Expr 5, ST 4, Stuff 22, Var 8.
+		TJ.Type type       (variable)
+		TJ.Type.INT/CHAR   (constant)
+		getType()          (returns 'F', 'I' ,'C', or 'S', Stuff function)
+	type: 31: Expr 15, ST 3, Stuff 5, Var 8.
+		TJ.Type type       (local/arg declare, 3 places)
+		type			   (usage of local)
+---------------------
+
+Fri, Jul 15
+Above type usage survey seems clean. Issue is that new code conform.
+continue work on Expr~352.
+	Fixes compile, run crashes...
+		running TC.main
+		TJ~33 eset: 
+		seed 
+		line 0 (cursor prog[6]): TYPEERR  <<== 5 esets
+			Expr~444
+			Stack~65,133
+			Stuff~116
+			Var~36
+		DONE
+Committed to git, crashes in seed. seed is "[main();]", cursor==6
+type for main is FCN. Why does it go to var code ???
+C code, frag in factor...
+       else if( _symName() ) {
+                cursor = lname+1;
+                int where, len, class, obsize, stuff;
+                if( _symNameIs("MC") ) { 
+                        _enter(0); return;
+                } else {
+                        struct var *v = addrval();  /* looks up symbol */
+                        if( !v ){ eset(SYMERR); return; } /* no decl */
+                        char* where = (*v).value.up;
+                        int integer =  (*v).value.ui; 
+                        int character = (*v).value.uc;
+                        int class=(*v).class; 
+                        int type=(*v).type; 
+                        int obsize = typeToSize(class,type);
+                        int len=(*v).len;
+     ===>>>             if( class=='E' ) _enter(where);  /* fcn call */
+                        else {   /* is var name */
+java code mimics class=='E' with v.value.isFcn(),  Expr~346.
+C: typeToSize() never called except on data type, else TYYPEER. 
+	java version defined Expr~443 DITTO.
+	Expr~341 call on type FCN see Expr~444. The call is from recent code.
+	The C code makes the same call, but it does not fail. My guess is C does
+	not have a FCN type, but uses class E. A fcns type is the type of return.
+		1005:			newvar('E',2,1,&kursor);
+		     			  type-----^ ^-----alen
+		     Is type 2 an int ???  YES
+			     typedef enum type {Err,Char,Int,CharStar} Type;
+So the java code needs to set the type for functions in tclink(). Hmm. ALL fcns
+return int. It is not a char until used ??? 
+---------------------
+
+Sat, Jul 16
+Still working on seed TYPEERR, ~2574 above, C code 2585     FIXED
+	Have equiv to ~2601 above IN Expr~346, but that is too late.
+	New approach, don't extract 5 datum from v UNTIL the datum is needed.
+		Covered all unneeded, will move down to place needed as need becomes
+		apparent.
+---------------------
+
+Sun, Jul 17
+whatHappened() now prints a line with a proper carot under the flaw !!! 
+Crashed parsing the MC call args, POPERR. So back on track of ~2483 above.
+---------------------
+
+Mon, Jul 18
+Did the 101 get parsed?
+Did the b get pushed?
+	Dumping the stack would give evidence...
+			running TC.main
+			Stack dump: [%c%s, 10]  <<==  before toptoi call
+			MC~124, mcno,nargs,stackSize: 10 3 1  <<== after
+			DONE
+	So b was NOT pushed, and 101 was NOT parsed.
+Work to do: enter BEFORE. Get the stack dump to have all 4 args. Expr~53,
+	tidied Expr, removed all trace code.
+	NEED to trace arg parsing loop: Expr~70 is call to asgn().
+new dumper: 	pt.dumpLine(String msg)
+----
+	Mpc extends MC
+Dialog extends PT
+Expr extends PT
+ST extends PT
+	Sval extends Stuff
+	Cval extends Stuff
+	Ival extends Stuff
+	Pval extends Stuff
+	Fvar extends Stuff
+Var extends PT
+Vartab extends PT
+---------------------
+
+Tue, Jul 19
+STATUS: stack dump has 1st 2 args, NEED 4.
+FLOW: push a clone of 'b', continue the loop, push Konst 101, MC101 w/ 3 args.
+A set of nice dumps is evolving, and should stay in the code...
+	All dumps should use either err or out, not a mixture.
+	All have msg arg, ...
+	Every class should offer one.   <<== FUTURE goal.
+	So far...
+		Dialog.dumpchar
+		Expr.dumpLine
+----------------
+running TC.main
+parsed symName: at  Expr.java factor 302 main
+parsed symName: at  Expr.java factor 302 foo
+parsed symName: at  Expr.java factor 302 pl
+parsed symName: at  Expr.java factor 302 MC
+parsed symName: at  Expr.java factor 302 b
+Stack dump: [%c%s, 10]MC~124, mcno,nargs,stackSize: 10 3 1
+DONE
+	gotta handle that b   <<==  Just push a klone of something.  <<== DONE
+whatHappened should follow dump style, no exit for example.
+---
+Var should offer v.resolve() which parses '(' and returns the element ELSE
+returns v itself. That way pushStuff is simple.    <<== future
+---
+New dump stuff relies on newlines coming from leading msg. This conflicts with
+tc msgs with trailing newlines, primarily from println's. DONE is appended to
+last dump. Leave it for now.
+---
+dumps so far...
+Specials
+	Dialog	dumpchar   arrow decorated to show tab vs blank
+	Vartab	dumpMap(Map), dumpVarTab()
+Generals
+	PT  usable in 5 derivatives without pt-dot prefix.
+		dumpSym(msg)		most recent symbol or constant match.
+		dumpSourceLine(msg)	replacement for C's __LINE__, file method line
+	Stack	dump(msg)
+	Stuff	dump(msg)
+	Var		dump(msg)
+	
+---------------------
+
+Wed, Jul 20
+STATUS:  parsed symName: at  Expr.java factor 302 main
+parsed symName: at  Expr.java factor 302 foo
+parsed symName: at  Expr.java factor 302 pl
+parsed symName: at  Expr.java factor 302 MC
+parsed symName: at  Expr.java factor 302 b    <<==  But not pushed
+MC~123, nargs,stackSize:  3 2
+in machinecall: Stack dump: [%c%s, 10]DONE
+GOAL: parse all 4 args today. Print the msg, too.
+---
+parsed symName: at  Expr.java factor 302 b     <<== 3rd arg
+MC~123, nargs,stackSize:  3 2                  <<== before mcno=toptoi()
+in machinecall: Stack dump: [%c%s, 10]TJ~33 eset: <<==  push is the issue
+lib line 62 (cursor prog[1145]): POPERR, nothing to pop
+	MC "%c%s", 10, b, 101
+	                 ^
+---
+Stuff.klone does not copy the value  <<==  Probably not used anywhere.
+	But that does not affect that pushStuff is not doing a push, Stack~28
+Expr~323, v IS an array of chars. 
+QUESTION: Do I need to clone a Stuff in vartab to push it? To be an lvalue is to
+give access to the value, which is in the vartab. I think I just push the ref.
+Is the returned lookup v a ref? That is java. Confirmed by reading O'reilly,
+Java in a Nutshell~70.
+	cloning would be a bug, because the value is part of the var. Only clone to
+protect the value from change. But then it is not an lvalue. And for constants,
+just plain don't change them. That makes a String constant different that a char
+array. And remember: clone() is an Object level fcn, and ~70 discusses proper
+usage.
+---
+added pushStuff() call Expr~322 [ isarray ], symptoms changed... 
+	running TC.main
+	parsed symName: at  Expr.java factor 302 main
+	parsed symName: at  Expr.java factor 302 foo
+	parsed symName: at  Expr.java factor 302 pl
+	pushing foo is here at  Stack.java pushStuff 29
+	pushing 0 at  Stack.java pushStuff 29              <<== ???
+	parsed symName: at  Expr.java factor 302 MC
+	pushing %c%s at  Stack.java pushStuff 29
+	pushing 10 at  Stack.java pushStuff 29
+	parsed symName: at  Expr.java factor 302 b
+	pushing foo is here at  Stack.java pushStuff 29
+	MC~123, nargs,stackSize:  3 3
+	in machinecall: Stack dump: [%c%s, 10, foo is here]  <<== BETTER
+	TJ~33 eset: 
+	lib line 62 (cursor prog[1145]): LVALERR, not assignable
+		MC "%c%s", 10, b, 101
+						 ^
+	java.lang.Exception: Stack trace
+101 is not pushed. Probably comma not recog'd.
+Navigating from PT to Dialog...
+	pt.tj.dl.whatever
+	dumpLine changed to dumpSourceLine, e.g.:  at Expr.java enter 70
+	new PT.showLineCur will display as whatever does, use same code.  
+---------------------
+
+Thur, Jul 21
+LVALERR after parsing b. Stuff has lvalue, and should be set appropriately by
+	the the various creates. BUT pursue this later. 
+Get last arg, 101, on stack. Then uncover newMC~139, etc.
+Navigation too messy. Need to simplify. Some dot-java have links to all, but
+some do not.
+A simpler design has one file, Common.java, with links to everywhere, and
+frequently used stuff like eset. TJ comes the closest, it has eset and 5 links.
+
+TREEs...
+	PT
+		Dialog extends PT {
+		Expr extends PT {
+		Stack extends PT {
+		ST extends PT {
+			Sval extends Stuff {
+			Cval extends Stuff {
+			Ival extends Stuff {
+			Pval extends Stuff {
+			Fvar extends Stuff {
+			Var extends PT {
+		Vartab extends PT {
+Not in above...
+	MC
+	Stuff    is base class
+	TJ
+	TC
+Changes...  ???    BUT watch out for duplicate links. Move to highest base.
+Probably Stuff and Var should not extend anything. What happens if Var is pure
+base, not extending PT? 
+	PT has all those literals plus lots of parse tools.
+	PT extends TJ
+	TJ has access to components...
+		public class TJ {
+		// access to components...
+			public Expr exp;
+			public Stack stk;
+			public ST stmt;
+			public Vartab vt;
+			public Dialog dl;
+		//	public PT pt;       <<== covered for some reason
+			public enum Type {CHAR, INT, FCN, STR };
+enuf, 9:30am Thur
+---------------------
+
+Fri, Jul 22
+Working in factor, Expr~322, on parsing a var. Need to distinquish simple from
+array from array element. And array element uses asgn which may return a
+constant or an expression. How did C handle all this?
+---
+java version: konst returns an Sval for quoted string.   <<== GOOD
+	I've seen it on a stack dump. 
+	It should NOT be an array, nor an lvalue. It IS a constant.
+	Sval Stuff~102: constructor is proper   <<== GOOD
+	FIXED: getting 4 args parsed...
+		Expr~76Stack dump: [%c%s, 10, foo is here, 101]
+	BUT a Var duplicates description (isarray for one) in Stuff. <<== DANGEROUS. 
+---------------------
+
+Sat, Jul 23
+Goal: get MC101 working. ISSUE: 101 uses varargs logic. Use some other.
+Back to MC1, then MC2, then classical first tc program.
+	test.tc has main and 4 tests: MCs 1 and 2. 
+	Only the first, MC 'X',1 is uncovered.
+		It gets into machineCall with stack...
+			in machinecall: Stack dump: [1]   TJ~33 eset: "no such MC"
+		NEED to push the 'X'.
+---
+machine call flow
+C
+	MC parsed, enter(0) called
+	ABOVE parses and stacks the args until no more commas
+	where tested for zero (is true)
+	nxtstack tested for >zero, else error
+	void machinecall(nargs) called
+		mcno=toptoi()
+		rest of args into args[]
+		orig/new/usr mc split...
+			if(mcno<100)origMC(mcno, nargs, args);
+			else if(mcno<200) newMC(mcno-100, nargs, args);
+			else if(mcno<300) userMC(mcno-200, nargs, args);
+		return value pushed by orig/new/user split code
+		DONE
+
+	
+	specific M function called with argument nargs which are on the stack.
+Java
+	MC parsed: Expr~307, enter(0) called
+	ditto above to and including orig/new/usr split
+		each split uses invoke to do the work, calling via appropriate args...
+static void invoke(String[] nameList, MC[] objList, int mcno, Stuff[] args) {
+	nameList is subclass names, objList is instance of subclass, filled in
+		when needed
+	invoke
+---------------------
+
+Sun, Jul 24
+The class name is the issue. It probably needs to be fully qualified.
+	Mpc is the unqualified name. 
+How to instantiate Mpc is the issue. Plain or qualified ??? Tried both. "No such
+MC". Qualifying prefix: "tg37.tinyc.MC." Tried both dot and /.
+---
+java has method reflection, so that is much closer to the C code. 
+PLAN: drop the instantiation of a class for each MC.
+	Use method reflection, just like C. Ref:
+https://www.tutorialspoint.com/How-do-I-invoke-a-Java-method-when-given-the-method-name-as-a-string
+		import java.lang.reflect.Method;
+		public class DemoTest {
+		   private void sampleMethod(){
+			  System.out.println("hello");
+		   }
+		}
+		public class SampleTest {
+		   public static void main(String args[]) throws Exception{
+			  Class c = Class.forName("DemoTest");
+			  Object obj = c.newInstance();
+			  Method method = c.getDeclaredMethod("sampleMethod", null);
+			  method.setAccessible(true);
+			  method.invoke(obj, null);
+		   }
+		}
+---
+ref: https://www.tutorialspoint.com/java/lang/class_getdeclaredmethod.htm
+   public static void main(String[] args) {
+      ClassDemo cls = new ClassDemo();
+      Class c = cls.getClass();
+      try {          
+         // method Integer
+         Class[] cArg = new Class[1];
+         cArg[0] = Integer.class;
+         Method lMethod = c.getDeclaredMethod("showInteger", cArg);
+         System.out.println("method = " + lMethod.toString());
+      } catch(NoSuchMethodException e) {
+         System.out.println(e.toString());
+      }
+   }
+C call:      int Mpc(int nargs, int *args);    <<==  all M's follow this model
+java call:   int Mpc(Stuff[] args);
+my try body...
+	// mcMethod( Stuff );
+	Class[] mcArg = new Class[1];
+	mcArg[0] = Stuff[].class;     // <<==  or other array notation GOOD GUESS
+	Method mcMethod = c.getDeclaredMethod(nameList[mcno], mcArg);
+System.out.println("method = " + lMethod.toString());
+	mcMethod.setAccessible(true);
+	mcMethod.invoke(args);
+guess confirmed:
+https://stackoverflow.com/questions/11022208/how-do-i-use-reflection-to-invoke-a-method-with-parameters
+---------------------
+
+Tue, Jul 26
+CURRENT WORK: Framework in MC.invoke to use ~2893 above java syntax for  mc's.
+TEST CASE:  is test.tc:      $ ./r TC test.tc
+Need to tidy the dumps parsing args. Expr~69,76, MC~123    DONE
+2 eset(MCERR): Expr~85, no such MC: mcno has no code
+	MC~82:  empty stack, no mcno
+	How to tell the difference?  stk.dump
+3 different codings: 2 in MC itself (2nd is covered) and one ~2894 above.
+	need side-by-side comparison.
+THOUGHTs: Stuff[] args to an mc is inconvenient. It should be int[] args.
+---------------------
+
+Tue, Jul 26
+STATUS: invoke throws IllegalArgumentException...
+	"object is not an instance of declaring class"
+	There is one argument, an int[]. declaring class is int[].class.
+https://docs.oracle.com/javase/7/docs/api/java/lang/reflect/Method.html#invoke(java.lang.Object,%20java.lang.Object...)
+IllegalArgumentException...
+- if the method is an instance method and the specified object argument is not
+	an instance of the class or   <<==  
+- interface declaring the underlying method (or of a subclass or implementor
+	thereof);  
+- if the number of actual and formal parameters differ; 
+- if an unwrapping conversion for primitive arguments fails; or 
+- if, after possible unwrapping, a parameter value cannot be converted to the 
+	corresponding formal parameter type by a method invocation conversion.      
+===
+The 8080 code used the equiv of a giant switch. There were only 14 mc's back
+then...
+	cpi 1;  jz MC1
+	cpi 2;  jz MC2
+	...
+	cpi 14; jz MC14
+It supported user mc's by the way, but supplied none of course.
+When I modernized the code using C I switched to Mname(int[]) functions, and had
+3 blocks: orig/new/user, each independantly growable without disturbing the
+others. And the were fcn addresses using C's &name instead of strings. For java
+I switched to method introspection. The blocks are quoted fcn names. All fcn
+signatures have one int[] arg. Evidently java cannot handle that signature. It
+complains:
+	IllegalArgumentException: object is not an instance of declaring class
+The object is an int[], the declaring class is int[].class. My test case is 
+MC 1, put a single char. Only one arg. So now I will use int and int.class which
+is not general enough, but will prove my flaw is not elsewhere in the logic.
+	Temp test changes lines MC~22,65,56,57,62,63
+Test failed in same way. The flaw is NOT int[] vs int. Both w/ dot-class suffix
+compile, so it is not java syntax. int[].class means something. Is that the
+"declaring class" ???
+---
+Made Mpc(int[]) static. Symptom changed. "wrong number of arguments"
+MC~63: added null, as first arg to invoke. Ran ok. Mpc printed "%c89". 
+The invoke WORKED !!!  But:
+	static and null ref:  
+		https://www.baeldung.com/java-method-reflection
+		section 4.2.
+	instance would need a first arg, probably 'this'. Need to try it...
+		remove static from Mpc
+		try this instead of void, ~63
+WORKS we are back to instance, and won't need the static word. Now lets clean up
+Mpc itself. Why does it print %c89 ???    <<== FIXED, prints 'Y' as required.
+Now tidy the code and commit.
+NEED to tidy the directory. Lots of junk. git status shows 33 untracked files.
+TRACK these:
+	src/ pps/ aa_notes.txt
+move to untracked ref_stuff subdir
+BAK/ JUNK/ *.api enter.txt factor*.txt foo.txt study_factor.c var-stuff.study
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+$ jdb tg37.tinyc.TC foo.tc   <<works, but cannot set bkpt, cannot watch
+	./r TC foo.tc    <<== test run
+		Dialog
+		Expr
+		ST
+		Var
+		Vartab

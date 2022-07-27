@@ -13,12 +13,9 @@ public class Var extends PT {
     Stuff value;
     Vartab vt;
 
-void at(int line) {System.err.println("at Var: "+line);}
-
-	public String toString() {
+    public String toString() {
         return name+": "+value;
     }
-    public void dump(String msg) { System.out.println(msg+"Var dump: "+this); }
 
     /*********** var tools ****************/
     /* copy the argument value into the new local place */
@@ -45,16 +42,13 @@ void at(int line) {System.err.println("at Var: "+line);}
     /* SITUATION: Declaration is parsed, and its descriptive data known. Create
     	a Stuff and add it to curfun. Formerly newvar. */
     public Var( boolean isArray, TJ.Type type, int len, Stuff passed ) {
-//at(47);
-//System.err.println("Var~48 tj: "+tj);
+    	super(TC.tj);
         this.isArray = isArray;
         this.type = type;
         this.len  = len;
-        this.name = tj.prog.substring(tj.fname,tj.lname);
+        this.name = tj.prog.substring(fname,lname);
         this.vt = tj.vt;
-        if(passed!=null){
-        	this.value = passed.klone();   // function arg
-        }
+        if(passed!=null)this.value = passed.klone();   // function arg
         else {    // declaration incl function parameter
             if(type==TJ.Type.INT) {
                 this.value = Stuff.createIval(0);

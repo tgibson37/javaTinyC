@@ -1,29 +1,15 @@
 package tg37.tinyc;
 
 public class Dialog extends PT {
-//    static TJ tj;   // Dialog's copy, declared up in base PT
-
-void at(int line){ System.err.println("at Dialog line "+line); }
-	
-    private static Dialog instance;
-    private Dialog(){
-    	tj = TC.tj;
-    }
-    public static synchronized Dialog getInstance(){
-        if(instance == null){
-            instance = new Dialog();
-        }
-        return instance;
-    }
-    
-    public int countch(int f, int t, char c) {
+    public static int countch(int f, int t, char c) {
         int k=1;   /* start on line 1 */
-        while( f++ <= t) if(tj.prog.charAt(f)==c) ++k;
+        while( f++ <= t) if(pr.charAt(f)==c) ++k;
         return k;
     }
-    public void errToWords() {
+
+    public static void errToWords() {
         String x="";
-        switch(tj.error) {
+        switch(error) {
         case 2:
             x="CURSERR, cursor out of range";
             break;
@@ -115,110 +101,98 @@ void at(int line){ System.err.println("at Dialog line "+line); }
         System.out.println(x);
     }
     /* returns index to first character of the current line */
-    public int fchar(int k) {
+    public static int fchar(int k) {
         char c;
         do {
-            c = tj.prog.charAt(k);
+            c = pr.charAt(k);
             if(c==0x0a||c==0x0d)break;
         } while( --k >= -1);
-        return k+1;
+        return k;
     }
     /* returns index to last character of the current line */
-    public int lchar(int k) {
+    public static int lchar(int k) {
         char c;
         do {
-            c = tj.prog.charAt(k);
+            c = pr.charAt(k);
             if(c==0x0a||c==0x0d)break;
-        } while( ++k < tj.endapp);
-        return k;
+        } while( ++k < endapp);
+        return k-1;
     }
 
     /*      Prints end of program message, "done" if no error, else code and
      *      line with error and carot under.
      */
-    public void whatHappened() {
-        if(tj.error==tj.KILL) errToWords();
-        else if(tj.error!=0) {
+    public static void whatHappened() {
+        if(error==TJ.KILL) errToWords();
+        else if(error!=0) {
             int fc, lc;
             int firstSignif=0, blanks, lineno;
-            char e = tj.prog.charAt(tj.errat);
-            if(e==0x0a||e==0x0d)--tj.errat;
-            if(tj.errat < tj.lpr) {
+System.err.println("Dialog~72: errat,EPR = "+errat+" "+EPR);
+            char e = pr.charAt(errat);
+            if(e==0x0a||e==0x0d)--errat;
+            if(errat<lpr) {
                 System.out.println("\nseed ");
                 lineno=0;
             }
-            else if(tj.errat < tj.apr) {
-                lineno = countch(tj.lpr,tj.errat,(char)0x0a);
-                if(lineno<=0)lineno = countch(0,tj.errat,(char)0x0d);
+            else if(errat<apr) {
+                lineno = countch(lpr,errat,(char)0x0a);
+                if(lineno<=0)lineno = countch(0,errat,(char)0x0d);
                 System.out.print("\nlib ");
             }
             else {
-                lineno = countch(tj.apr,tj.errat,(char)0x0a);
-                if(lineno<=0)lineno = countch(tj.apr,tj.errat,(char)0x0d);
+                lineno = countch(apr,errat,(char)0x0a);
+                if(lineno<=0)lineno = countch(apr,errat,(char)0x0d);
                 System.out.print("\napp ");
             }
-            System.out.print("line "+lineno+" (cursor prog["+tj.errat+"]): ");
-			errToWords();
-			fc=showLine();
-			showPosition();
+            System.out.print("line "+lineno+" (cursor pr["+errat+"])");
+//
+//                errToWords();
+//                fc=fchar(errat);
+//                while(fc+firstSignif < EPR){
+//                	char c = pr.charAt(fc+firstSignif);
+//                	if(c==' ' || c=='\t') ++firstSignif;
+//                }
+//                lc=lchar(errat);
+//                pft(fc,lc);
+//                System.out.println("");
+//                pft(fc,fc+firstSignif-1);        /* leading whitespace */
+//                blanks=errat-fc-firstSignif-1;   /* blanks to carot */
+//                while(--blanks >= 0) System.out.print(" ");
+//                System.out.println("^");
+
         }
         else {
-            if(!tj.quiet)System.out.println("\ndone");
+            if(!quiet)System.out.println("\ndone");
         }
     }
-    public void dumpLine(String msg) {
-    	System.out.print(msg);
-    	showLine(); showPosition();
-    }
-    int showLine() {
+
+    void showLine(int line) {
         int fc, lc;
-        fc=fchar(tj.cursor);
-        lc=lchar(tj.cursor);
+        fc=fchar(line);
+        lc=lchar(line);
         pft(fc,lc);
-        pc('\n');
-        return fc;
     }
-    void showPosition(){
-		int fc=fchar(tj.errat);
-		int lc=lchar(tj.errat);
-		int firstSignif=fc;
-		while(true){
-			char c = tj.prog.charAt(firstSignif);
-			if( (c==' ')||(c=='\t') ) ++firstSignif;
-			else break;
-		}
-		int blanks=tj.errat-firstSignif-1;   /* blanks to carot */
-		pft(fc,firstSignif);        /* leading whitespace */
-		while(--blanks >= 0) ps(" ");
-		ps("^\n");
-	}
 
     /************ simple prints ******************/
-    void ps(String s) {
+    static void ps(String s) {
         System.out.print(s);
     }
-    void pl(String s) {
+    static void pl(String s) {
         System.out.print("\n"+s);
     }
-    int  pn(int n)   {
+    static int  pn(int n)   {
         System.out.print(n);
         return n;
     }
-    void pc(char c)  {
+    static void pc(char c)  {
         System.out.print(c);
     }
-    void pft(int f,int t) {
-		String x = tj.prog.substring(f,t);
-        System.out.print(x);    // <<== THIS IS JUST A TAB
+    static void pft(int f,int t) {
+        System.out.print(pr.substring(f,t));
     }
-/* show just one char on its own line with arrows to make a tab evident */
-    void dumpchar(String label, int pos){
-    	char c = tj.prog.charAt(pos);
-    	System.err.println("\n"+label+"-->"+c+"<--");
-	}
 
-    public void logo() {
-        if(tj.quiet)return;
+    public static void logo() {
+        if(quiet)return;
         System.out.println(
             "***  TINY-C VERSION 1.0,  COPYRIGHT 1977, T A GIBSON  ***"
         );

@@ -12,17 +12,16 @@ abstract public class Stuff {
     public int len;            // 1 for datum, else length of array
     public boolean lvalue;
     public boolean isArray;    // used to be 'class,' 0 for datum 1 for array
-	static TJ tj;
 
-	Stuff(TJ.Type t, int l, boolean lv, boolean ia ) {
-		tj = TJ.getInstance();
-		type = t;
+	static TJ tj = null;
+    Stuff(TJ.Type t, int l, boolean lv, boolean ia ) {
+    	if(tj==null)tj=new TJ();
+        type = t;
         len = l;
         lvalue = lv;
         isArray = ia;
     }
     abstract public int getInt();
-    public void dump(String msg){ System.out.print(msg+this.toString()); }
     public char getType() {   // 'F', 'I' ,'C', or 'S'
         String t = this.getClass().toString();
         return t.charAt( t.length()-4 );
@@ -48,7 +47,6 @@ abstract public class Stuff {
 //System.err.println("Stuff~42, isFcn: " + t + (t=='P') );
         return t=='P';
     }
-    
     public static Ival createIval(int i) {
         return new Ival(i);
     }
@@ -102,7 +100,7 @@ abstract public class Stuff {
 class Sval extends Stuff {
     String val;
     Sval(String v) {
-        super(TJ.Type.CHAR, v.length(), false, false);
+        super(TJ.Type.CHAR,v.length(),false,false);
         val=v;
     }
     public String toString() {

@@ -4,7 +4,7 @@
 package tg37.tinyc;
 import java.util.*;
 
-public class Stack extends PT {
+public class Stack {
 	static StackImpl stack;
 	static TJ tj;
 
@@ -18,23 +18,17 @@ public class Stack extends PT {
         }
         return instance;
     }
-    /* used by machinecall 
-    public Stuff[] argsToArray(int nargs){
-System.err.println("Stack~23: CODE LATER "+nargs);
-return null;
-    }
-*/
+    
     /* basic pusher */
-    public void pushStuff(Stuff stuff) {
-//dumpSourceLine("pushing "+stuff);
+    public void pushstf(Stuff stuff) {
         stack.push(stuff);
     }
     /* basic popper, entry stays accessible until pushed over */
-    public Stuff popst() {
+    public Stuff popstf() {
         return stack.pop();
     }
-    Stuff peek(int argp) {
-    	return stack.peek(argp);
+    public Stuff peek(int arg) {
+        return stack.peek();
     }
     public Stuff peekTop() {
         return stack.peekTop();
@@ -51,7 +45,7 @@ return null;
     public int toptoi() {
         int datum=9999999;
         Stuff stf;
-        Stuff top = popst();
+        Stuff top = popstf();
         if( top.isArray ) {
             if(top.lvalue) {
                 if(top.isNum()) datum=top.getInt();
@@ -73,12 +67,12 @@ return null;
 
     /* push an int */
     public void pushk(int datum) {
-        pushStuff( new Ival(datum) );
+        pushstf( new Ival(datum) );
     }
 
     /* push an int as a class 1 */
     public void pushPtr(int datum) {
-        pushStuff( new Pval(datum) );
+        pushstf( new Pval(datum) );
     }
 
     /* these two used by RELN */
@@ -92,15 +86,11 @@ return null;
     public int size() {
         return stack.size();
     }
-    public void dump(String msg){
-    	System.err.print(msg);
-    	stack.dump();
-    }
 
 // tests...
 /*
 	private static void kase(Stuff s, String sb, Stack stk) {
-        stk.pushStuff(s);
+        stk.pushstf(s);
         System.out.print("Should be:"+sb);
         int x = stk.toptoi();
         System.out.println(": "+x);
@@ -167,9 +157,6 @@ class StackImpl {
         List stack = new ArrayList<Stuff>(this.list);
         this.list.removeAll(stack);
         return stack;
-    }
-    void dump(){
-    	System.out.print("Stack dump: "+this.list);
     }
 //    void flush() {
 //        this.list = new ArrayList<Stuff><>();
