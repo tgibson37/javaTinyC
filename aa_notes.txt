@@ -2929,7 +2929,9 @@ IllegalArgumentException...
 - if an unwrapping conversion for primitive arguments fails; or 
 - if, after possible unwrapping, a parameter value cannot be converted to the 
 	corresponding formal parameter type by a method invocation conversion.      
-===
+---------------------
+
+Wed, Jul 27
 The 8080 code used the equiv of a giant switch. There were only 14 mc's back
 then...
 	cpi 1;  jz MC1
@@ -2939,7 +2941,7 @@ then...
 It supported user mc's by the way, but supplied none of course.
 When I modernized the code using C I switched to Mname(int[]) functions, and had
 3 blocks: orig/new/user, each independantly growable without disturbing the
-others. And the were fcn addresses using C's &name instead of strings. For java
+others. And they were fcn addresses using C's &name instead of strings. For java
 I switched to method introspection. The blocks are quoted fcn names. All fcn
 signatures have one int[] arg. Evidently java cannot handle that signature. It
 complains:
@@ -2969,6 +2971,80 @@ TRACK these:
 	src/ pps/ aa_notes.txt
 move to untracked ref_stuff subdir
 BAK/ JUNK/ *.api enter.txt factor*.txt foo.txt study_factor.c var-stuff.study
+---
+Only doing one statement. test.tc not doing multiple lines, just the first
+uncovered. 3 exits: 
+	TC~30		cannot load, usually bad file name
+	TJ~38		eset forced exit after whatHappened() call
+	Expr~135	loading or linking error
+---
+navigation diversion. It needs tidying...
+	If I put the links in PT then 5 other files inherit. 11 files total.
+	Stuff, Var, Vartab, MC, TC not reached.
+whatHappened() Dialog~139 is overkill, layer-wise. 
+GOALs:
+	Find out why TC executes only one statement from test.tc.
+		And call it test01.tc, start of a suite.
+x	layering Dialog so I can use the tools elsewhere.
+		Also it could use reordering of its elements. They seem scattered.
+	PT seems to be emerging as the base class for almost all dot-java.
+	Need to select one source as the model for all navigation.
+		PT only offers tj.
+---------------------
+
+Thur, Jul 28
+Working the one source as model goal, so I can use Dialog tools everywhere.   
+	Dialog	extends PT;  no links;  inits inherited tj in constructor
+	Expr	extends PT, links to stk,stmt,vt,dl;  inits all in getInstance 
+	MC		base;  link to stk,stmt,vt,dl,tj,mc;  inits all in decls
+	PT		base;  link to tj,dl;  inits in constructor
+	ST		extends PT;  link to exp,stk,prog;  inits all incl tj in gI
+	Stack	extends PT;  link to tj;  inits 
+	Stuff	base;  link to tj;  inits 
+	TC		base;  link to tj;  inits 
+	TJ		base;  link to stk,stmt,vt,dl,tj,mc;  inits 
+	Var		extends PT;  link to vt;  inits 
+	Vartab	extends PT;  link to tj,stmt;  inits 
+THOUGHTS: the variation is not important. What is important is convenience, i.e.
+avoid double hops like tj.xx.whatever. Eliminate these, but how to find them???
+Instead of looking for them go ahead with other goals and fix these when
+encountered.  Remember this table is at ~3000.
+---
+GOAL: why only one statement ???
+needed: pt.dumpSourceLine PT~96 to trace stuff in ST
+	Dialog~183 has showLine(),showPosition() calls. Dangerous structure, using
+	external fc to communicate for first to second call. ALSO dumpLine(msg)
+	calls them one after the other. Not used yet in whatHappened.
+INFINITE recursion...   FIXED
+---------------------
+
+Sat, Jul 30
+dumpLine bug -- Dialog extends PT, and each has its own dumpLine(msg). Somehow
+PT's prevails, even though D's would be an override. Signatures???
+	D:     public void dumpLine(String msg) {
+	PT:    void dumpLine(String msg){
+covered the PT version. Now just one, D's public version. I should be getting
+both line dump and 'Y' output. Getting ONLY "next: D189"   FIXED
+--- 
+NEW BUG: Null ptr exception, Expr~228.
+expr: "rest of the terms" the stack is empty. 
+	It should have the first term, the returned value of MC1.
+	isArray needed here to determine pushk vs pushptr of possible arithmetic.
+	FLAW is empty stack. MC~56.
+---------------------
+
+Sun, Jul 31
+MC.java:60: error: incompatible types: int cannot be converted to Stuff
+		stk.pushStuff(result);
+		              ^
+---
+
+
+
+
+
+	
+	
 
 
 
@@ -2982,13 +3058,4 @@ BAK/ JUNK/ *.api enter.txt factor*.txt foo.txt study_factor.c var-stuff.study
 
 
 
-
-
-
-$ jdb tg37.tinyc.TC foo.tc   <<works, but cannot set bkpt, cannot watch
-	./r TC foo.tc    <<== test run
-		Dialog
-		Expr
-		ST
-		Var
-		Vartab
+	./r TC test.tc    <<== test run

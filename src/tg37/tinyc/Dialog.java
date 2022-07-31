@@ -1,13 +1,11 @@
 package tg37.tinyc;
 
 public class Dialog extends PT {
-//    static TJ tj;   // Dialog's copy, declared up in base PT
 
 void at(int line){ System.err.println("at Dialog line "+line); }
 	
     private static Dialog instance;
     private Dialog(){
-    	tj = TC.tj;
     }
     public static synchronized Dialog getInstance(){
         if(instance == null){
@@ -15,11 +13,27 @@ void at(int line){ System.err.println("at Dialog line "+line); }
         }
         return instance;
     }
-    
+    /* count occurances of c from prog[f] to prog[t] inclusive */
     public int countch(int f, int t, char c) {
         int k=1;   /* start on line 1 */
         while( f++ <= t) if(tj.prog.charAt(f)==c) ++k;
         return k;
+    }
+    /* return code area name at prog[kursor] */
+    public String codeArea(int kursor) {
+		if(kursor < tj.lpr) return "\nseed ";
+		else if(kursor < tj.apr) return "\nlib ";
+		else return "\napp ";
+    }
+/* return line number relative to beginning of code area */
+    public int codeLineInArea(int kursor) {
+		if(kursor < tj.lpr) return 0;
+		else if(kursor < tj.apr) return countch(tj.lpr,kursor,(char)0x0a);
+		else {
+			int lineno = countch(tj.apr,kursor,(char)0x0a);
+			if(lineno<=0)lineno = countch(tj.apr,kursor,(char)0x0d);
+			return lineno;
+		}
     }
     public void errToWords() {
         String x="";
@@ -117,11 +131,11 @@ void at(int line){ System.err.println("at Dialog line "+line); }
     /* returns index to first character of the current line */
     public int fchar(int k) {
         char c;
-        do {
+        while( --k >= 0){
             c = tj.prog.charAt(k);
             if(c==0x0a||c==0x0d)break;
-        } while( --k >= -1);
-        return k+1;
+        }
+        return k==0 ? 0 : k+1;
     }
     /* returns index to last character of the current line */
     public int lchar(int k) {
@@ -143,6 +157,10 @@ void at(int line){ System.err.println("at Dialog line "+line); }
             int firstSignif=0, blanks, lineno;
             char e = tj.prog.charAt(tj.errat);
             if(e==0x0a||e==0x0d)--tj.errat;
+            System.out.println( codeArea(tj.errat) );
+            lineno = codeLineInArea(tj.errat);
+
+/*
             if(tj.errat < tj.lpr) {
                 System.out.println("\nseed ");
                 lineno=0;
@@ -157,6 +175,7 @@ void at(int line){ System.err.println("at Dialog line "+line); }
                 if(lineno<=0)lineno = countch(tj.apr,tj.errat,(char)0x0d);
                 System.out.print("\napp ");
             }
+*/
             System.out.print("line "+lineno+" (cursor prog["+tj.errat+"]): ");
 			errToWords();
 			fc=showLine();
@@ -167,8 +186,8 @@ void at(int line){ System.err.println("at Dialog line "+line); }
         }
     }
     public void dumpLine(String msg) {
-    	System.out.print(msg);
-    	showLine(); showPosition();
+    	showLine();
+    	showPosition();
     }
     int showLine() {
         int fc, lc;
@@ -179,8 +198,8 @@ void at(int line){ System.err.println("at Dialog line "+line); }
         return fc;
     }
     void showPosition(){
-		int fc=fchar(tj.errat);
-		int lc=lchar(tj.errat);
+		int fc=fchar(tj.cursor);
+		int lc=lchar(tj.cursor);
 		int firstSignif=fc;
 		while(true){
 			char c = tj.prog.charAt(firstSignif);
@@ -209,7 +228,7 @@ void at(int line){ System.err.println("at Dialog line "+line); }
     }
     void pft(int f,int t) {
 		String x = tj.prog.substring(f,t);
-        System.out.print(x);    // <<== THIS IS JUST A TAB
+        System.out.print(x);
     }
 /* show just one char on its own line with arrows to make a tab evident */
     void dumpchar(String label, int pos){

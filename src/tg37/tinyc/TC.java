@@ -19,7 +19,7 @@ public class TC {
     public void loadCode(String[] args) throws IOException {
 		byte[] b;
         String ppsPath = "./pps/library.tc";
-        String startSeed = new String("[main();]");
+        String startSeed = new String("[main();]\n");
 
         Path libpath = Paths.get(ppsPath);
         b = Files.readAllBytes(libpath);
@@ -55,10 +55,10 @@ public class TC {
 			Stack.getInstance();
 			tj.cursor = 0;   // seed
 			vt.tclink();
-//			vt.dumpVarTab();
             stmt.st();
         } catch(Exception e) {
-//            e.printStackTrace();
+e.printStackTrace();
+System.err.println("TC~60, Exception: "+e);
         }
     }
     public static void main(String[] args) {
@@ -66,5 +66,6 @@ public class TC {
         System.out.println("running TC.main");
         tc = new TC();
        	tc.initAndGo(args);
+System.out.println("\nTC~69, natural exit");
     }
 }

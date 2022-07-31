@@ -19,8 +19,8 @@ public class MC {
         return instance;
     }
 
-    int Mpc(int args[]){     // <<<===    temp test, should be args[]
-		System.out.print((char)args[0]);   //   args[0]
+    int Mpc(int args[]){
+		System.out.print((char)args[0]);
 		return args[0];
     }
 /*	code the MC above and register in Names array. Placement in the array
@@ -43,17 +43,20 @@ public class MC {
         , "naf", "naf", "naf", "naf", "naf"
 };
 
+//    int Mpc(int args[]){
+
 	void invoke(String[] nameList, int mcno, Stuff[] args) {
 		Stuff result = null;
 		try{
 			int nargs = args.length;
-			int[] mcArg = new int[nargs];   //<<== temp test
-			for(int i=0;i<nargs;++i) mcArg[i]=args[i].getInt();   //<<== temp test
+			int[] mcArg = new int[nargs];
+			for(int i=0;i<nargs;++i) mcArg[i]=args[i].getInt();
 			Class mcClass = this.getClass();
 			Method mcMethod = 
-				mcClass.getDeclaredMethod(nameList[mcno-1], int[].class);   //<<== temp test
+				mcClass.getDeclaredMethod(nameList[mcno-1], int[].class);
 			mcMethod.setAccessible(true);
-			mcMethod.invoke(this,mcArg);
+			Integer ret = (Integer)mcMethod.invoke(this,mcArg);
+			result = new Ival(ret.intValue());
 		} catch(Exception e){
 			tj.eset(tj.MCERR);
 		}

@@ -7,7 +7,11 @@ package tg37.tinyc;
 
 public class PT {
 	public static TJ tj;
-	public PT(){ tj = TC.tj; }
+	public static Dialog dl;
+	public PT(){ 
+		tj = TC.tj;
+//		dl = Dialog.getInstance();
+	}
 		
     /************** literals **************/
     static String xif = "if";
@@ -81,21 +85,21 @@ public class PT {
         tj.lname = temp;
         return true;  /* good, fname and lname defined */
     }
-    /* dump the most recently parsed symbol (or constant) 
-     */
+    /* dump the most recently parsed symbol (or constant) */
     void dumpSym(String msg){
     	System.out.print(msg + tj.prog.substring(tj.fname,tj.lname));
     }
+/* dump current line with ^ under cursor
     void dumpLine(String msg){
-    	System.out.print(msg);
-System.err.println("PT~91, dumpLine() not coded yet");
+System.err.println("PT~94 ");
+    	System.out.print(msg+"PT94");
+    	dl.dumpLine(msg);
     }
-    
+*/
     /* dump the current line number. 
     	Ref: https://www.recitalsoftware.com/blogs/152-howto-use-file-and-line-in-java-programs
      */
-	public static void dumpSourceLine(String msg)
-	{
+	public static void dumpSourceLine(String msg) {
 		System.out.print("\n"+msg);
 		System.out.print(" at " + 
 					   " "+new Throwable().getStackTrace()[1].getFileName() +

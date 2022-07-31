@@ -3,4 +3,6 @@ main [
 	//pc('X')
 	//MC(MC(1),2)
 	//pc(gc())
+	//MC(10,1)
+	//x = 0;   // intentional error
 ]

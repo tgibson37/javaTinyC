@@ -367,7 +367,6 @@ return null;
             return new Sval(tj.prog.substring(tj.fname,tj.lname));
 
         } else if(lit("\'")) {
-//dumpSourceLine("prime parsed <<<===========");
             tj.fname=tj.cursor;
             /* lname = last char, cursor = lname+2 (past the quote) */
             x=mustFind(tj.fname+1,tj.fname+2,'\'',tj.CURSERR);
