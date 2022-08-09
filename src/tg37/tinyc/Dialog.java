@@ -186,6 +186,7 @@ void at(int line){ System.err.println("at Dialog line "+line); }
         }
     }
     public void dumpLine(String msg) {
+    	System.err.print(msg+"...\n");
     	showLine();
     	showPosition();
     }

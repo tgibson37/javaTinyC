@@ -1,21 +1,22 @@
 package tg37.tinyc;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 public class ST extends PT {
 	static Dialog dl;
 	static Expr exp;
 	static Stack stk;
-	static String prog;
 
     private static ST instance;
     private ST(){super();}
     public static synchronized ST getInstance(){
+//dl.dumpLine("ST~12");
         if(instance == null){
             instance = new ST();
 			exp = Expr.getInstance();
 			stk = Stack.getInstance();
 			tj = TJ.getInstance();
 			dl = Dialog.getInstance();
-			prog = tj.prog;
         }
         return instance;
     }
@@ -99,7 +100,8 @@ public class ST extends PT {
             rem();
         }
         else if(lit(xreturn)) {
-            char c = prog.charAt(tj.cursor);
+trace(new Throwable(),"=============>>>> ST~103, return; arg,stk.size():",0,0);
+            char c = tj.prog.charAt(tj.cursor);
             boolean eos = ( lit(xrpar)
                             || c == '['
                             || c == ']'
@@ -113,6 +115,8 @@ public class ST extends PT {
             }
             else {
                 exp.asgn();  /* specified return value */
+trace(new Throwable(),"===>> ST~118",0,0);
+System.err.println("ST~119, peek top: "+stk.peekTop());
             }
             tj.leave=true;		/* signal st() to leave the function */
             return;
@@ -147,9 +151,9 @@ public class ST extends PT {
             rem();
             return;
         }
-        else {                                  /* simple statement, eol or semi     697 ends */
+        else {                             /* simple statement, eol or semi */
             while(++tj.cursor<tj.endapp) {
-                char c = prog.charAt(tj.cursor);
+                char c = tj.prog.charAt(tj.cursor);
                 if( (c==0x0d)||(c=='\n')||(c==';') )break;
             }
             ++tj.cursor;
@@ -223,4 +227,35 @@ public class ST extends PT {
         }
         new Var(isArray, type, alen, vpassed);
     }
+// COPY FROM Projects/Java/TryIt/Trace ...
+    static String getStackTrace(Throwable t) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw, true);
+        t.printStackTrace(pw);
+        pw.flush();
+        sw.flush();
+        return sw.toString();
+    }
+    private static void process(String s){
+        s = munge(s);     // uncover to simplify the output
+        System.err.println(s);
+    }
+    private static String munge(String s){
+        s = s.substring(s.indexOf("at"));
+        s = s.substring(0,s.indexOf("\n"));
+        return s;
+    }
+    private static String trace(Throwable t){
+        String s = getStackTrace(t);
+        process(s);
+        return s;
+    }
+    private static String trace(Throwable t, String msg, int i, int j) {
+        System.err.print(msg+": "+i+" "+j+" ");
+        return trace(t);
+    }
+/* USAGE:
+        trace(new Throwable());   //<<-- this is a trace mark
+        trace(new Throwable(),"message");   //<<-- mark with message
+*/
 }

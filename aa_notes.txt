@@ -3035,16 +3035,323 @@ expr: "rest of the terms" the stack is empty.
 
 Sun, Jul 31
 MC.java:60: error: incompatible types: int cannot be converted to Stuff
-		stk.pushStuff(result);
+		stk.pushStuff(result);     <<== FIXED
 		              ^
+pps/putchar works when     if(c==0)c='"'    is covered.
+GOAL: make if statement work. ST and EXPR involved. And eq().
+	ST.prog is null. I need to yet again think through a reliable startup.
+TC.loadAndGo() should instantiate everything, tj first...
+	public Expr exp;
+	public Stack stk;
+	public ST stmt;
+	public Vartab vt;
+	public Dialog dl;
+	public PT pt;
+Each constructor should copy what it needs from tj.
+	TJ.prog decl~42      <<== TJ~42
+	TC~43 instantiates
+Flow of startup...
+	TC~67 instantiates self, base class
+	TC~49 instantiates: TJ
+		loadCode, tj.prog defined    <<==  TC~43
+	TC~51..55 Vartab,Dialog,Expr,ST,Stack  in that order
+	  TJ...
+		exp=Expr.getInstance();
+    	stk=Stack.getInstance();
+    	stmt=ST.getInstance();
+    	vt=Vartab.getInstance();
+    	dl=Dialog.getInstance();
+all ref's to prog use tj-dot:   tj.prog
+instantiate ST after prog is defined, after loadCode~43 
+---------------------
+
+Mon, Aug 1
+null ptr excptn caused by using dumpLine before all loading is done. REMOVED.
+STATUS: test.c MC1 OK, putchar No: NullPointerException in skipSt(), ST~158.
+	This has to be the if statement. YES D~142 7 hits.
+ST.prog is null and parsing is happening.   <<== study ~3053 above
+SOLUTION: don't use local prog, use tj.prog in ST.   FIXED
+	Got the 'X'.  Tidy the code then uncover more test.
 ---
+MC2: "no such MC"   <<== goal
+---------------------
+
+Tue, Aug 2
+STATUS:
+	MC(MC(2),1)          <<== works OK
+	putchar(getchar())   <<== ARGSERR     fixing this first
+	int x
+	x = getchar()
+	putchar(x)           <<== runs, no error, NO OUTPUT
+debugging 2nd case, ARGSERR.....
+	Expr~124 arg stk.size: 1 2
+	faithful replica of C code. 
+		Not sure why it works there, what is arg ???
+			int arg=nxtstack;  <<== 1st code line of enter(), local
+			BELOW, arg bumped at each setArg call. 
+				SO stk.size and arg and nxtstack kept equal. VALID test
+	java dump...
+Expr~54, enter(), hit 5 times
+	seed call main
+	test call MC('>',1)
+	putchar parsed
+	getchar parsed		all these show arg,stk.size 0 0
+	MC 2 parsed         show 1 2   <<-- out of sync at Expr~124, enter cleanup
+---
+from the dumps...
+		Expr~54...
+			f = MC 2     <<== ~54 does line dump, this line is from getchar()
+			^
+		Expr~55 arg stk.size: 1 1
+		z    <<== my data entry
+		   Expr~124 arg stk.size: 1 2
+		TJ~33 eset: 
+Note ~124 not rached on MC call, it is BELOW
+---------------------
+
+Wed, Aug 3
+Still debugging ARGSERR. 
+PLAN: dump  each push & pop w/ java stack trace. Use that data to reconstruct
+	the flow. 
+	java.lang.Thread.dumpStack(). This prints presumably to err.
+	Thread.currentThread() returns current thread.
+	Thread.getStackTrace() returns array 
+Working new tool: Projects/TryIt/Trace
+---------------------
+
+Thur, Aug 4
+Goal: use trace to study flow, and to help find cause of ARGSERR. Need to study
+placements.  FIRST RUN...
+		enter: at tg37.tinyc.Expr.enter(Expr.java:54)
+		asgn: at tg37.tinyc.Expr.enter(Expr.java:71)
+		MC: at tg37.tinyc.Expr.enter(Expr.java:80)  <<== getchar calls MC 2
+		zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz             <<== my data entry
+		BELOW: at tg37.tinyc.Expr.enter(Expr.java:90)  <<== 
+		char: at tg37.tinyc.Expr.enter(Expr.java:106)  <<== putchar(char x)
+		break: at tg37.tinyc.Expr.enter(Expr.java:118) <<== no more parms
+		TJ~33 eset: 
+		app 
+		line 14 (cursor prog[5679]): ARGSERR, args don't match
+This is towards the end, the last of 7 enters. Indenting would be helpful. I
+once had an indent counter, a static global bumped/unbumped by enter(). A getter
+would return a String of blanks to be added to the msg getIndent().It should be
+modulo 4 or 5.
+---------------------
+
+Thur, Aug 4
+	putchar(getchar())
+---
+running TC.main
+SYM:: ->main<-
+enter; arg,stk.size():: 0 0 at tg37.tinyc.Expr.enter(Expr.java:57)
+BELOW: 0 0 at tg37.tinyc.Expr.enter(Expr.java:90)
+break: 0 0 at tg37.tinyc.Expr.enter(Expr.java:118)
+SYM:: ->putchar<-
+enter; arg,stk.size():: 0 0 at tg37.tinyc.Expr.enter(Expr.java:57)
+SYM:: ->getchar<-
+enter; arg,stk.size():: 0 0 at tg37.tinyc.Expr.enter(Expr.java:57)
+BELOW: 0 0 at tg37.tinyc.Expr.enter(Expr.java:90)
+break: 0 0 at tg37.tinyc.Expr.enter(Expr.java:118)
+SYM:: ->gc<-
+enter; arg,stk.size():: 0 0 at tg37.tinyc.Expr.enter(Expr.java:57)
+BELOW: 0 0 at tg37.tinyc.Expr.enter(Expr.java:90)
+break: 0 0 at tg37.tinyc.Expr.enter(Expr.java:118)
+SYM:: ->f<-
+  Stk~143 push:      << lvalue f
+SYM:: ->MC<-
+enter; arg,stk.size():: 1 1 at tg37.tinyc.Expr.enter(Expr.java:57)
+  Stk~143 push: 2
+after asgn: : 1 2 at tg37.tinyc.Expr.enter(Expr.java:73)
+MC: : 1 2 at tg37.tinyc.Expr.enter(Expr.java:80)
+  Stk~152 pop: 2
+Z====
+  Stk~143 push: 90   <<== 'Z'
+  Stk~152 pop: 90                      <<<==  ???
+SYM:: ->f<-
+  Stk~143 push: 
+after asgn: : 0 2 at tg37.tinyc.Expr.enter(Expr.java:73)
+BELOW: 0 2 at tg37.tinyc.Expr.enter(Expr.java:90)
+char: 1 2 at tg37.tinyc.Expr.enter(Expr.java:109)
+break: 1 2 at tg37.tinyc.Expr.enter(Expr.java:118)
+ISSUE: 1 2 at tg37.tinyc.Expr.enter(Expr.java:125)
+TJ~33 eset: 
+app 
+line 14 (cursor prog[5687]): ARGSERR, args don't match
+-------------
+code frags...
+getchar [
+        return gc
+]
+gc [
+        char f
+        f = MC 2
+        return f
+]
+putchar char c [
+        if(c==0)c='"'
+        MC c,1
+]
+//MC 1
+	int Mpc(int args[]){
+		System.out.print((char)args[0]);
+		return args[0];
+    }
+//MC 2
+    	static String _buff;
+    	static int buff_nxt=0, buff_len=0;
+    	static Scanner _input = null;
+    int Mgch(int args[]){
+    	if(_input==null)_input = new Scanner(System.in);
+   		_buff = _input.next();
+   		buff_len = _buff.length();
+   		buff_nxt = 0; 
+    	if(buff_nxt <= buff_len-1) return _buff.charAt(buff_nxt++);
+    	else return('\n');
+    }
+---------------------
+
+Sat, Aug 5
+study code line:   putchar(getchar)
+------------- indent is a fcn enter, equal indents are same fcn ---- stack size
+What should happen...				.stack effect...					.0
+putchar c						.Expr~71 asgn must push value of getchar.
+	getchar 						.
+		gc, f=MC2 					.eq pushes lvalue f					.1
+			MC2						.
+				Mgch returns 'Z'	.invoke pushes Ival 'Z'				.2
+			returns 'Z'				.
+		eq effects f='Z'			.eq consumes both, pushes 'Z'		.1
+		returns f which is 'Z'		.
+	returns 'Z'						.
+c acquires value 'Z'			.Expr~71 effected
+MC c,1								.
+	Mpc								.
+	'Z' is printed					.
+========================================= TEST RUN
+SYM: : ->putchar<-      V-V-----arg,stack size
+enter; arg,stk.size():: 0 0 at tg37.tinyc.Expr.enter(Expr.java:57)
+
+SYM: : ->getchar<-
+enter; arg,stk.size():: 0 0 at tg37.tinyc.Expr.enter(Expr.java:57)
+BELOW: 0 0 at tg37.tinyc.Expr.enter(Expr.java:90)
+break: 0 0 at tg37.tinyc.Expr.enter(Expr.java:118)
+
+SYM: : ->gc<-
+enter; arg,stk.size():: 0 0 at tg37.tinyc.Expr.enter(Expr.java:57)
+BELOW: 0 0 at tg37.tinyc.Expr.enter(Expr.java:90)
+break: 0 0 at tg37.tinyc.Expr.enter(Expr.java:118)
+
+SYM: : ->f<-
+Stk~143 push:         <<==   lvalue
+
+SYM: : ->MC<-
+enter; arg,stk.size():: 1 1 at tg37.tinyc.Expr.enter(Expr.java:57)
+Stk~143 push: 2         <<==   mcno
+after asgn: : 1 2 at tg37.tinyc.Expr.enter(Expr.java:73)
+MC: : 1 2 at tg37.tinyc.Expr.enter(Expr.java:80)
+Stk~152 pop: 2         <<==
+Z==================
+Stk~143 push: 90         <<==   90 is 'Z'
+Stk~152 pop: 90         <<==
+
+SYM: : ->f<-
+Stk~143 push:              <<== push what ???
+after asgn: : 0 2 at tg37.tinyc.Expr.enter(Expr.java:73)  <<== ISSUE ???
+BELOW: 0 2 at tg37.tinyc.Expr.enter(Expr.java:90)
+char: 1 2 at tg37.tinyc.Expr.enter(Expr.java:109)
+break: 1 2 at tg37.tinyc.Expr.enter(Expr.java:118)
+ISSUE: 1 2 at tg37.tinyc.Expr.enter(Expr.java:125)
+TJ~33 eset: 
+app 
+line 14 (cursor prog[5687]): ARGSERR, args don't match
+---------------------
+
+Sun, Aug 7
+at ~3257 above parsing Mgch line ~3187  f = MC 2
+	lvalue f and arg 2 get pushed ~3257,58.
+		shouldn't stk~143 push show it is a 2 ?
+		after asgn whould be 0 1, assign pops 2 and pushes 1
+factor~330 is the push call. Stack~30 the pushStuff call.
+---	The digit pairs 'at tg37'  are args to trace...
+---------------------------------------------------------------------
+SYM: : ->gc<-           <<=====  called from getchar         ONE
+enter; arg,stk.size():: 0 0 at tg37.tinyc.Expr.enter(Expr.java:57)  <<== no args
+BELOW: 0 0 at tg37.tinyc.Expr.enter(Expr.java:90)
+break: 0 0 at tg37.tinyc.Expr.enter(Expr.java:118)   <<== end of parms (none)
+SYM: : ->f<-     <<=====  assignment in gc
+var not array: 0 0 at tg37.tinyc.Expr.factor(Expr.java:330) <<== f.value (twice)
+Stk~143 push:           <<======  push f
+	f = MC 2
+	^
+SYM: : ->MC<-                                                TWO
+enter; arg,stk.size():: 1 1 at tg37.tinyc.Expr.enter(Expr.java:57)
+konst: 2 2 at tg37.tinyc.Expr.konst(Expr.java:358)      <<<<<==   i i
+Stk~143 push: 2           <<======  push 2
+	f = MC 2
+	^
+after asgn: : 1 2 at tg37.tinyc.Expr.enter(Expr.java:73)  <<==    after f=MC 2
+MC: : 1 2 at tg37.tinyc.Expr.enter(Expr.java:80)
+Stk~152 pop: 2           <<======  pop 2
+	return f
+	^
+Z                        <<====================== MY DATA ENTRY
+Mgch returning: : 90 90 at tg37.tinyc.MC.Mgch(MC.java:39)    THREE,  OK so far
+Stk~143 push: 90           <<======  push Z, Mgc return stmt
+	return f
+	^
+Stk~152 pop: 90           <<======  pop Z
+SYM: : ->f<-             <<=====  return f, getchar return stmt
+var not array: 0 0 at tg37.tinyc.Expr.factor(Expr.java:330)	 f.value (twice)
+Stk~143 push:                                           <<<===  f pushed
+	return f
+	^
+after asgn: : 0 2 at tg37.tinyc.Expr.enter(Expr.java:73)    arg size
+BELOW: 0 2 at tg37.tinyc.Expr.enter(Expr.java:90)    		arg size
+char: 1 2 at tg37.tinyc.Expr.enter(Expr.java:109)	    	arg size
+break: 1 2 at tg37.tinyc.Expr.enter(Expr.java:118)    		arg size
+ISSUE: 1 2 at tg37.tinyc.Expr.enter(Expr.java:125)    		arg size
+TJ~33 eset: 
+--- above traces embrace the flaw
+---------------------
+
+Mon,Tue Aug 8,9
+Annotating above trace. Studying: 1:getchar calls gc, 2:gc calls MC 2,Mgc,
+3: Mgc returns 'Z',
+WHY is cursor not advancing ???
+	Expr~157: eq() is covered <<<===  !!!
+	asgn parses but does nothing except return true/false.
+C's _eq() is HUGE:   ~ 100 loc.
+	Pulls in lots of other stuff...
+	Maybe do JUST simple var and konst ???
+	in src/../tinyc is eq.c and eq.bak, the latter is mods 444 (read only).
+===================   flow of eq()  =============
+pop val and lval
+test lval is an lvalue else error
+many sections handle different class combinations, and Char vs Int.
+For NOW zero in on 0 0 int int, and MAYBE Stuff instead of raw makes simpler.
+Simplified C version is eq01.c
+---
+Compiling Eq01.java, much simplified.
+	Expr.java complaining, ~157... -->   if(error==0)eq();
+	How does java handle errors, try-catch ???
+About 40 hits on error. Need to audit. Thought is: a call to eset should be
+replaced by a throw. About 40 esets, too.
+Better design: 
+	every eset changed to throw(new eset(".."))
+	eset changed to Class eset implements throwable.
+	No more testing of error and returning.
+	Do Stack first.
+TODO: popst->popStuff
+STATUS: Stuff needs value setter   <==  GOAL
+Xval values, X= ICP
 
 
 
 
 
-	
-	
+
+
+
 
 
 

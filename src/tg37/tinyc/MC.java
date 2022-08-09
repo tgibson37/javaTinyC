@@ -1,5 +1,8 @@
 package tg37.tinyc;
 import java.lang.reflect.*;
+import java.util.Scanner;
+import java.io.StringWriter;
+import java.io.PrintWriter;
 
 public class MC {
 	
@@ -18,11 +21,25 @@ public class MC {
         }
         return instance;
     }
-
-    int Mpc(int args[]){
+//MC 1
+	int Mpc(int args[]){
 		System.out.print((char)args[0]);
 		return args[0];
     }
+//MC 2   may need esc key handling, see C code.
+    	static String _buff;
+    	static int buff_nxt=0, buff_len=0;
+    	static Scanner _input = null;
+    int Mgch(int args[]){
+    	if(_input==null)_input = new Scanner(System.in);
+   		_buff = _input.next();
+   		buff_len = _buff.length();
+   		buff_nxt = 0; 
+   		int x = (buff_nxt<=buff_len-1) ? _buff.charAt(buff_nxt++) : '\n'; 
+trace(new Throwable(),"Mgch returning: ",x,x);
+    	return x;
+    }
+    
 /*	code the MC above and register in Names array. Placement in the array
  *	determines the MC number starting with 1, 101, 201.
  */
@@ -43,7 +60,7 @@ public class MC {
         , "naf", "naf", "naf", "naf", "naf"
 };
 
-//    int Mpc(int args[]){
+//    int Mpc(int args[]){      <<== model format
 
 	void invoke(String[] nameList, int mcno, Stuff[] args) {
 		Stuff result = null;
@@ -144,5 +161,36 @@ public class MC {
 		if(tj.error==tj.EXIT)return;
 		if(tj.error!=0)System.out.print("\nMC %d not defined"+mcno);
 	}
+// COPY FROM Projects/Java/TryIt/Trace ...
+    static String getStackTrace(Throwable t) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw, true);
+        t.printStackTrace(pw);
+        pw.flush();
+        sw.flush();
+        return sw.toString();
+    }
+    private static void process(String s){
+        s = munge(s);     // uncover to simplify the output
+        System.err.println(s);
+    }
+    private static String munge(String s){
+        s = s.substring(s.indexOf("at"));
+        s = s.substring(0,s.indexOf("\n"));
+        return s;
+    }
+    private static String trace(Throwable t){
+        String s = getStackTrace(t);
+        process(s);
+        return s;
+    }
+    private static String trace(Throwable t, String msg, int i, int j) {
+        System.err.print(msg+": "+i+" "+j+" ");
+        return trace(t);
+    }
+/* USAGE:
+        trace(new Throwable());   //<<-- this is a trace mark
+        trace(new Throwable(),"message");   //<<-- mark with message
+*/
 }
 //System.out.println("MC~58 nargs "+nargs);

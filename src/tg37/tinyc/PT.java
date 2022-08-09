@@ -7,10 +7,12 @@ package tg37.tinyc;
 
 public class PT {
 	public static TJ tj;
-	public static Dialog dl;
+//	public static Dialog dl;
+	public static Eq01 eq;
+	
 	public PT(){ 
 		tj = TC.tj;
-//		dl = Dialog.getInstance();
+		eq = Eq01.getInstance();
 	}
 		
     /************** literals **************/
@@ -86,8 +88,8 @@ public class PT {
         return true;  /* good, fname and lname defined */
     }
     /* dump the most recently parsed symbol (or constant) */
-    void dumpSym(String msg){
-    	System.out.print(msg + tj.prog.substring(tj.fname,tj.lname));
+    public static void dumpSym(String msg){
+    	System.out.print(msg + ": ->"+tj.prog.substring(tj.fname,tj.lname)+"<-\n");
     }
 /* dump current line with ^ under cursor
     void dumpLine(String msg){

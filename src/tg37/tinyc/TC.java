@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.nio.file.*;
 
 public class TC {
-    String startSeed = "[main();]";
+//    String startSeed = "[main();]";
     public static TJ tj;
 
     void at(int line){

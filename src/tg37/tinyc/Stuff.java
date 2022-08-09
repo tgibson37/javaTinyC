@@ -22,6 +22,7 @@ abstract public class Stuff {
         isArray = ia;
     }
     abstract public int getInt();
+    abstract public void setInt(int val);
     public void dump(String msg){ System.out.print(msg+this.toString()); }
     public char getType() {   // 'F', 'I' ,'C', or 'S'
         String t = this.getClass().toString();
@@ -118,6 +119,9 @@ class Sval extends Stuff {
         tj.eset(tj.TYPEERR);
         return -999999;
     }
+    public void setInt(int x) {
+        tj.eset(tj.TYPEERR);
+    }
 }
 class Cval extends Stuff {
     char val;
@@ -137,6 +141,9 @@ class Cval extends Stuff {
     }
     public int getInt() {
         return (int)val;
+    }
+    public void setInt(int val) {
+        this.val = (char)val;
     }
 }
 class Ival extends Stuff {
@@ -158,6 +165,9 @@ class Ival extends Stuff {
     public int getInt() {
         return val;
     }
+    public void setInt(int val) {
+        this.val = val;
+    }
 }
 /* used only by Expr.expr() for expression: ptr +/- int
  */
@@ -178,6 +188,9 @@ class Pval extends Stuff {
     public int getInt() {
         return kursor;
     }
+    public void setInt(int val) {
+    	tj.eset(tj.TYPEERR);
+    }
 }
 // used only in var table, never pushed, no klone
 class Fvar extends Stuff {
@@ -194,6 +207,9 @@ class Fvar extends Stuff {
     }
     public int getInt() {
         return kursor;
+    }
+    public void setInt(int x) {
+    	tj.eset(tj.TYPEERR);
     }
 }
 

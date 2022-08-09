@@ -127,11 +127,13 @@ class StackImpl {
 
     private static StackImpl instance;
 	static TJ tj;
+	static Dialog dl;
     private StackImpl(){}
     public static synchronized StackImpl getInstance(){
         if(instance == null){
             instance = new StackImpl();
             tj = TJ.getInstance();
+            dl = Dialog.getInstance();
         }
         return instance;
     }
@@ -140,6 +142,9 @@ class StackImpl {
         return list.size();
     }
     void push(Stuff value) {
+//Thread.dumpStack();
+System.out.println("Stk~143 push: "+value.toString());
+dl.dumpLine("Stk~144");
         list.add(value);
     }
     Stuff pop() {
@@ -148,6 +153,8 @@ class StackImpl {
         }
         Stuff value = this.list.get(this.list.size() - 1);
         this.list.remove(this.list.size() - 1);
+System.out.println("Stk~152 pop: "+value.toString());
+dl.dumpLine("Stk~152");
         return value;
     }
     Stuff peek(int argp) {

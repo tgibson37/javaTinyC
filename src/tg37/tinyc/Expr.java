@@ -1,13 +1,15 @@
 /*	Tests for and parses constant. Cursor moved just beyond constant.
  */
 package tg37.tinyc;
+import java.io.StringWriter;
+import java.io.PrintWriter;
 
 public class Expr extends PT {
-//    static boolean trace=false;
 	static Stack stk;
 	static ST stmt;
 	static Vartab vt;
 	static Dialog dl;
+	static Eq01 eq;
 
     private static Expr instance;
     private Expr(){}
@@ -18,6 +20,7 @@ public class Expr extends PT {
 			stmt = ST.getInstance();
 			vt = Vartab.getInstance();
 			dl = Dialog.getInstance();
+			eq = Eq01.getInstance();
         }
         return instance;
     }
@@ -32,7 +35,6 @@ public class Expr extends PT {
  */ 
 	void setArg( TJ.Type type, int arg ) {
 		Stuff valPassed = stk.peek(arg);
-//System.err.println("Expr~35 setArg: "+valPassed);
 /*		boolean isarray = valPassed.isArray;
         boolean lvalue = valPassed.lvalue;
         TJ.Type stacktype = valPassed.type;
@@ -51,9 +53,10 @@ public class Expr extends PT {
     }
 
     public void enter(int where) {   // c code tc~307
-        int arg = stk.size();    // index to first parsed arg, if any
+		int arg = stk.size();    // index to first parsed arg, if any
         int nargs=0;
         int varargs=0;
+trace(new Throwable(),"enter; arg,stk.size():",arg,stk.size());
         lit(xlpar); 		// optional (
         char x = tj.prog.charAt(tj.cursor);
         boolean haveArgs =  ! ( lit(xrpar)
@@ -66,18 +69,17 @@ public class Expr extends PT {
                           );
         if ( haveArgs ) {
             do {
-//stk.dump("\n==>> Expr~69, args loop, ");
-//dumpSourceLine("");
                 if(tj.error!=0)return;
                 if( asgn()) ++nargs;
                 else break;  // break on error
+trace(new Throwable(),"after asgn: ",arg,stk.size());
 			} while( lit(xcomma) );
         }
-//stk.dump("\nExpr~76");
         if(tj.error!=0)return;
         lit(xrpar);   // optional )
         rem();
         if(where==0) {
+trace(new Throwable(),"MC: ",arg,stk.size());
             if(stk.size()>0) {
                 MC.machinecall( nargs );
 //              varargs=0;
@@ -87,7 +89,7 @@ public class Expr extends PT {
         }
 // ABOVE  ^^^^   parse the args, set cursor
 // BELOW  vvvv   parse the parameters, declare/set their values, st() the body
-
+trace(new Throwable(),"BELOW",arg,stk.size());
 		int localstcurs=tj.stcurs, localcurs=tj.cursor;
         tj.cursor = where;
         vt.newfun();
@@ -98,6 +100,7 @@ public class Expr extends PT {
 				  do {
 					  setArg(TJ.Type.INT, arg);
 					  arg++;
+trace(new Throwable(),"int",arg,stk.size());
 				  } while(lit(xcomma));
 				  lit(xsemi);    // optional
 			}
@@ -105,6 +108,7 @@ public class Expr extends PT {
 				do {
 					setArg(TJ.Type.CHAR, arg);
 					arg++;
+trace(new Throwable(),"char",arg,stk.size());
 				} while(lit(xcomma));
 				lit(xsemi);
 		   }
@@ -113,12 +117,14 @@ public class Expr extends PT {
 //			   break;
 //		   }
 		   else {
+trace(new Throwable(),"break",arg,stk.size());
 			   break;
 		   }
 	   }
 // assure number of args == number of parms, clean up...
 	   if(varargs==0) {
-		   if(arg != stk.size()) {
+		   if(arg != stk.size()) {    // <<<===  ISSUE
+trace(new Throwable(),"ISSUE",arg,stk.size());
 				tj.cursor=localcurs;
 				tj.stcurs=localstcurs;
 				tj.eset(tj.ARGSERR);
@@ -150,7 +156,7 @@ public class Expr extends PT {
         if(reln()) {
             if(lit(xeq)) {
                 asgn();
-                //			if(error==0)eq();      actions covered for now
+                if(tj.error==0)eq.eq();
             }
         }
 //System.err.println("Expr~168, returning from asgn, error: "+tj.error);
@@ -302,7 +308,7 @@ public class Expr extends PT {
         Stuff kon=konst();
         if( kon!=null ) stk.pushStuff(kon);
         else if( symName() ) {
-//dumpSourceLine("parsed symName:");dumpSym(" ");    // <<== parsed 'b' OK
+PT.dumpSym("\nSYM: ");
             tj.cursor = tj.lname;
             if( symNameIs("MC") ) {
                 enter(0);
@@ -323,6 +329,7 @@ public class Expr extends PT {
                     	Stuff element = resolve(v.value);
 						stk.pushStuff( element );
                     } else {
+trace(new Throwable(),"var not array",v.value.getInt(),v.value.getInt());
 						stk.pushStuff( v.value );
                     }
                 }
@@ -334,8 +341,7 @@ public class Expr extends PT {
     }
 	/* If ( return the subscripted element, else the array itself as lvalue. */
     Stuff resolve(Stuff array) {
-System.err.println("Expr~337: not coded yet");
-return null;
+    	return array;
     }
 
     public Stuff konst() {
@@ -351,6 +357,7 @@ return null;
             tj.lname = tj.cursor;
             String s = tj.prog.substring(tj.fname,tj.lname);
             int i = Integer.parseInt(s);
+trace(new Throwable(),"konst",i,i);
             return new Ival(i);
         } else if(lit("\"")) {
             tj.fname=tj.cursor;
@@ -390,4 +397,35 @@ return null;
 			else tj.eset(tj.TYPEERR);
 			return 0;
 	}
+// COPY FROM Projects/Java/TryIt/Trace ...
+    static String getStackTrace(Throwable t) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw, true);
+        t.printStackTrace(pw);
+        pw.flush();
+        sw.flush();
+        return sw.toString();
+    }
+    private static void process(String s){
+        s = munge(s);     // uncover to simplify the output
+        System.err.println(s);
+    }
+    private static String munge(String s){
+        s = s.substring(s.indexOf("at"));
+        s = s.substring(0,s.indexOf("\n"));
+        return s;
+    }
+    private static String trace(Throwable t){
+        String s = getStackTrace(t);
+        process(s);
+        return s;
+    }
+    private static String trace(Throwable t, String msg, int i, int j) {
+        System.err.print(msg+": "+i+" "+j+" ");
+        return trace(t);
+    }
+/* USAGE:
+        trace(new Throwable());   //<<-- this is a trace mark
+        trace(new Throwable(),"message");   //<<-- mark with message
+*/
 }
