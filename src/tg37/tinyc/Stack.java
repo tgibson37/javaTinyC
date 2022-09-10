@@ -49,28 +49,9 @@ return null;
     	It used to be called class.
      */
     public int toptoi() {
-        int datum=9999999;
-        Stuff stf;
         Stuff top = popst();
-        if( top.isArray ) {
-            if(top.lvalue) {
-                if(top.isNum()) datum=top.getInt();
-                else tj.eset(tj.LVALERR);
-            }
-            else datum=(int)(top.getInt());
-        }
-        else
-
-            if(top.lvalue) {
-                if(top.isNum()) datum  = top.getInt();
-                else tj.eset(tj.TYPEERR);
-            }
-            else {
-                tj.eset(tj.LVALERR);
-            }
-        return datum;
+        return top.getInt();
     }
-
     /* push an int */
     public void pushk(int datum) {
         pushStuff( new Ival(datum) );
@@ -98,7 +79,6 @@ return null;
     }
 
 // tests...
-/*
 	private static void kase(Stuff s, String sb, Stack stk) {
         stk.pushStuff(s);
         System.out.print("Should be:"+sb);
@@ -111,13 +91,12 @@ return null;
         System.out.println("running Stack.main");
         kase( new Ival(77), "77", stk );
         kase( new Cval('A'), "65", stk );
-        str = new Sval("A string via getStr(), then via getInt()");
+        str = new Sval("This is a string: via getStr(), then via getInt()");
         System.out.println(" proper call: "+((Sval)str).getStr());
-        System.out.println(" intentional getInt() call:");
-        kase( str, "9s", stk );
-        System.out.println("      and eset(TYPEERR)");
+//        System.out.println(" intentional getInt() call:");
+//        kase( str, "9s", stk );
+//        System.out.println("      and eset(TYPEERR)");
     }
-*/
 }
 
 /*	Ref: https://contactsunny.medium.com/stack-implementation-example-in-java-9e2923fab87e
@@ -143,8 +122,8 @@ class StackImpl {
     }
     void push(Stuff value) {
 //Thread.dumpStack();
-System.out.println("Stk~143 push: "+value.toString());
-dl.dumpLine("Stk~144");
+//System.out.println("Stk~143 push: "+value.toString());
+//dl.dumpLine("Stk~144");
         list.add(value);
     }
     Stuff pop() {
@@ -153,8 +132,8 @@ dl.dumpLine("Stk~144");
         }
         Stuff value = this.list.get(this.list.size() - 1);
         this.list.remove(this.list.size() - 1);
-System.out.println("Stk~152 pop: "+value.toString());
-dl.dumpLine("Stk~152");
+//System.out.println("Stk~152 pop: "+value.toString());
+//dl.dumpLine("Stk~152");
         return value;
     }
     Stuff peek(int argp) {
@@ -176,7 +155,7 @@ dl.dumpLine("Stk~152");
         return stack;
     }
     void dump(){
-    	System.out.print("Stack dump: "+this.list);
+    	System.out.print("Stack dump, (top is last): "+this.list);
     }
 //    void flush() {
 //        this.list = new ArrayList<Stuff><>();

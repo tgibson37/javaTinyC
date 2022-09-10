@@ -8,7 +8,7 @@ NEED: lvalue service that returns an actual value Stuff. Expr~20.
 package tg37.tinyc;
 
 abstract public class Stuff {
-    public TJ.Type type;          // CHAR, INT, FUNCTION
+    public TJ.Type type;          // CHAR, INT, FCN, STR
     public int len;            // 1 for datum, else length of array
     public boolean lvalue;
     public boolean isArray;    // used to be 'class,' 0 for datum 1 for array
@@ -16,38 +16,46 @@ abstract public class Stuff {
 
 	Stuff(TJ.Type t, int l, boolean lv, boolean ia ) {
 		tj = TJ.getInstance();
+		
 		type = t;
         len = l;
         lvalue = lv;
         isArray = ia;
     }
-    abstract public int getInt();
-    abstract public void setInt(int val);
-    public void dump(String msg){ System.out.print(msg+this.toString()); }
-    public char getType() {   // 'F', 'I' ,'C', or 'S'
-        String t = this.getClass().toString();
-        return t.charAt( t.length()-4 );
+    public int getInt(){return -999999;}
+    public void setInt(int val){}
+    public int getInt(int sub){return -999999;}  // return element of array
+    public void setInt(int sub, int val){}  // set element of array
+    public Stuff getStuff(int sub){return null;}     // return element wrapped as Stuff
+
+    public void dump(String msg){ 
+    	System.out.println(msg+this.toString());
+    	System.out.println("  type,len,lvalue,isArray: "+type+" "+
+    		len+" "+lvalue+" "+isArray );
+    }
+//    public char getType() {   // 'F', 'I' ,'C', or 'S'
+//        String t = this.getClass().toString();
+//        return t.charAt( t.length()-4 );
+//    }
+    public void setConstant() {
+    	lvalue=false;
     }
     public boolean isNum() {
-        char t = getType();
-        return t=='I' || t=='C' ;
+        boolean t = isInt() || isChar() || isFcn();  //<<== try it 
+        return t;
     }
     public boolean isInt() {
-        char t = getType();
-        return t=='I';
+        return type==TJ.Type.INT;
     }
     public boolean isChar() {
-        char t = getType();
-        return t=='C';
+        return type==TJ.Type.CHAR;
     }
     public boolean isStr() {
-        char t = getType();
-        return t=='S';
+        return type==TJ.Type.STR;
     }
     public boolean isFcn() {
-        char t = getType();
-//System.err.println("Stuff~42, isFcn: " + t + (t=='P') );
-        return t=='P';
+		boolean x = type==TJ.Type.FCN;
+        return x;
     }
     
     public static Ival createIval(int i) {
@@ -67,10 +75,10 @@ abstract public class Stuff {
         Stuff vc = new Cval('Q');
         Stuff vs = new Sval("foo-bar");
 
-        System.out.println("  types");
-        System.out.println(vi.getType());
-        System.out.println(vc.getType());
-        System.out.println(vs.getType());
+//        System.out.println("  types");
+//        System.out.println(vi.getType());
+//        System.out.println(vc.getType());
+//        System.out.println(vs.getType());
 
         System.out.println("  using getters, (81 is decimal Q)");
         System.out.println(String.valueOf(((Ival)vi).getInt()));
@@ -84,18 +92,25 @@ abstract public class Stuff {
 
         System.out.println("  via clones");
         Stuff svi = (Stuff)vi.klone();
-        System.out.println(svi.getType()+": "+svi);
-        //System.out.println(svi.getInt());
+        System.out.println("vi clone: "+svi);
         Stuff svc = (Stuff)vc.klone();
-        System.out.println(svc.getType()+": "+svc);
-        //System.out.println(svc.getInt());
+        System.out.println("vc clone: "+svc);
         Stuff svs = (Stuff)vs.klone();
-        System.out.println(svc.getType()+": "+svs);
-        //System.out.println(svc.toString());
-
+        System.out.println("vs clone: "+svs);
+        
+        System.out.println("   arrays, constructors w/ 2 args are arrays...");
+        Stuff sa = new Ival(11,7);   // arg 1 is value set into sa's [0] cell.
+        System.out.println("sa[7] is "+sa.toString());
+        sa.setInt(3,5);    // subscript 3, value 5.
+        int x = sa.getInt(3); System.out.println("x: "+x);
+        Ival ia = (Ival)sa;
+        int y = ia.getInt(3); System.out.println("y: "+y);
+        for(int i=0; i<7; ++i)System.out.print(" "+ia.getInt(i));
+        System.out.println("");
     }
     abstract public Stuff klone();
 }
+
 /* Originals are in the var Maps. Clones are put onto the stack.
 	Type t, int len, boolean lvalue, boolean isArray   <<-- constructor parms
 	   1       2           3                4
@@ -107,7 +122,7 @@ class Sval extends Stuff {
         val=v;
     }
     public String toString() {
-        return val;
+        return "Sval:"+val;
     }
     public String getStr() {
         return val;
@@ -115,83 +130,87 @@ class Sval extends Stuff {
     public Stuff klone() {
         return new Sval(val);
     }
-    public int getInt() {
-        tj.eset(tj.TYPEERR);
-        return -999999;
-    }
-    public void setInt(int x) {
-        tj.eset(tj.TYPEERR);
-    }
 }
+
 class Cval extends Stuff {
-    char val;
+    char val[];
+// array
     Cval(char v, int len) {
-        super(TJ.Type.CHAR,len,true,false);
-        val=v;
+        super(TJ.Type.CHAR,len,true,true);
+        val = new char[len];
+        val[0]=v;
     }
-    Cval(int v) {
+	public int getInt(int sub) {
+		if(0<=sub && sub<=len) return (int)val[sub];
+		tj.eset(tj.RANGERR); return 0;
+    }
+    public void setInt(int sub, int val) {
+		if(0<=sub && sub<=len) this.val[sub] = (char)val; 
+		else tj.eset(tj.RANGERR);
+    }
+// datum
+    Cval(char v) {
         super(TJ.Type.CHAR, 1, true, false);
-        val=(char)v;
+        val = new char[1];
+        val[0] = v;
+    }
+    public int getInt() {
+        return (int)val[0];
+    }
+    public void setInt(int v) {
+        val[0] = (char)v;
     }
     public String toString() {
-        return String.valueOf(val);
+        return "Cval:"+String.valueOf(val);  //  <<===   ???
     }
     public Stuff klone() {
-        return new Cval(val);
-    }
-    public int getInt() {
-        return (int)val;
-    }
-    public void setInt(int val) {
-        this.val = (char)val;
+        return new Cval(val[0]);
     }
 }
+
 class Ival extends Stuff {
-    int val;
+    int val[];
+    // array
     Ival(int v, int len) {
-        super(TJ.Type.INT,len,true,false);
-        val=v;
+        super(TJ.Type.INT,len,true,true);
+        val = new int[len];
+        val[0] = v;  // might as will use v for something.
     }
+	public int getInt(int sub) {   // Maybe not useful, getStuff() is better.
+		if(0<=sub && sub<=len) return val[sub];
+		tj.eset(tj.RANGERR); return 0;
+    }
+	public Stuff getStuff(int sub) {
+		if(0<=sub && sub<=len) return new Ival(val[sub]);
+		tj.eset(tj.RANGERR); return null;
+    }
+    public void setInt(int sub, int val) {
+		if(0<=sub && sub<=len) this.val[sub] = val; 
+		else tj.eset(tj.RANGERR);
+    }
+// datum
     Ival(int v) {
         super(TJ.Type.INT, 1, true, false);
-        val=v;
-    }
-    public String toString() {
-        return String.valueOf(val);
-    }
-    public Stuff klone() {
-        return new Ival(val);
+    	len=1;
+    	val = new int[1];
+        val[0]=v;
     }
     public int getInt() {
-        return val;
+        return val[0];
     }
     public void setInt(int val) {
-        this.val = val;
+        this.val[0] = val;
     }
-}
-/* used only by Expr.expr() for expression: ptr +/- int
- */
-//	Probably same as Ival with isArray true. Keep it for now.
-class Pval extends Stuff {
-    int kursor;
-    Pval(int v) {
-        super(TJ.Type.INT,1,true,true);
-        kursor=v;
-        isArray=true;
-    }
+
     public String toString() {
-        return String.valueOf(kursor);
+    	if(isArray)return "int array["+len+"]" ;
+        return "Ival:"+String.valueOf(val[0]);
     }
     public Stuff klone() {
-        return new Pval(kursor);
-    }
-    public int getInt() {
-        return kursor;
-    }
-    public void setInt(int val) {
-    	tj.eset(tj.TYPEERR);
+        return new Ival(val[0]);
     }
 }
+
 // used only in var table, never pushed, no klone
 class Fvar extends Stuff {
     int kursor;
@@ -203,14 +222,23 @@ class Fvar extends Stuff {
         return String.valueOf(kursor);
     }
     public Stuff klone() {
+System.err.println("Stuff~232, shouldnt get here, cursor= "+tj.cursor);
+tj.dl.dumpLine("");
+Thread.dumpStack();
+System.exit(99);
         return null;
-    }
-    public int getInt() {
-        return kursor;
     }
     public void setInt(int x) {
     	tj.eset(tj.TYPEERR);
     }
+    public int getInt(){     // Only valid use of Fvar
+    	return kursor;
+    }
+    public void setInt(int x, int sub) {
+    	tj.eset(tj.TYPEERR);
+    }
+    public int getInt(int sub){
+    	tj.eset(tj.TYPEERR);
+    	return -999999;
+    }
 }
-
-

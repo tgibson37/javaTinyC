@@ -3342,8 +3342,380 @@ Better design:
 	No more testing of error and returning.
 	Do Stack first.
 TODO: popst->popStuff
-STATUS: Stuff needs value setter   <==  GOAL
-Xval values, X= ICP
+STATUS: Stuff needs value setter   <==  DONE
+What if PT inherited TJ. Wouldn't that simplify the connnexions ???
+
+class TJ    < base class, ALL CONNNEXIONS HERE.
+	class PT extends TJ    << new
+		public class Dialog extends PT {
+		public class Eq01 extends PT {
+		public class Expr extends PT {
+		public class Stack extends PT {
+		public class ST extends PT {
+		public class Var extends PT {
+		public class Vartab extends PT {
+Stuff
+	class Sval extends Stuff {
+	class Cval extends Stuff {
+	class Ival extends Stuff {
+	class Pval extends Stuff {
+	class Fvar extends Stuff {
+---------------------
+
+Wed Aug 10
+STATUS: Have compile w/ simplified eq(). Test run does not crash. Results need
+study.
+TRACES: too many. GOAL: cover them out. Cannot see if Z gets echoed. 
+	factor~311, SYM may be useful
+The Z DID get echoed...
+		running TC.main
+		Z
+		Z
+		TC~69, natural exit
+		DONE
+STATUS: need a new goal. Probably should tidy and commit again. But what to do
+next? What is the next test?
+C tests using files cases 30 up. Dir ~/Projects/tiny-c/testFiles.
+	test 30 should run, bunch of MC1's. 31 is MC 14, int decl, while, if, else.
+Is this a good time to do ~3348 above? AND then cp testFiles to . and do 31.
+---
+CONNNEXIONS survey...
+$ ./gj instance|grep new, edited
+--- EXISTING...
+Eq01 extends PT   needs  stk  
+Expr extends PT   needs  stk stmt vt dl eq 
+MC                needs  stk stmt vt dl tj mc
+Stack extends PT  needs  stack tj  
+class StackImpl   needs  tj dl  
+ST extends PT     needs  dl exp stk  
+TJ                needs  exp stk stmt vt dl pt  
+Vartab extends PT needs  tj stmt  
+PT                needs  tj
+--- PROPOSAL
+PT EXTENDS TJ. MC extends PT. TJ has all except eq, so add that. Only TJ has
+needs, the rest inherit. Only one setup.TJ basically owns all globals. And tj
+not needed in above needs.
+--- good idea, but moving to next test.
+-------------------------------
+Test arrangement: dir NewTests has test01.tc, just finished. Soft link Tests
+points to ../../tiny-c/testFiles which has 46 tests plus inputs, expected
+results, a couple of scripts. Doing the numbered tests first.
+OPPS, some tests are tc fragments. E.g. 30 does not have a main. It is just a
+compound with 8 MC1's printing 'hello tc'.
+PLAN: edit 30 and save in new tests, and save w/ dot-tc suffix in NewTests.
+	The edit was simple, just add main to the compound. 31 needs MC 14. 34 needs
+custom mods. Probably all do. 
+	$ ./r TC NewTests/30.tc      <<<=== runs it
+changing NewTests to jtest...
+---
+Running test 31, GOOD     $ ./r TC jtest/31.tc
+STATUS: to run a test:  ./r TC jtest/<testName>.tc
+To fetch a C test: 
+	jEdit Test/<testName>
+	edit to make it a tc prog
+	save as jtest/<testName>.tc   <<==  USE SAVE AS
+GOOD so far: test01,30,31,33
+---
+PLAN: cp Test/* 2 digit stuff into jtest. Then edit all saving as dot-tc.
+	doing blocks of 10, not all seem useful.
+---------------------
+
+Thur Aug 11
+Finished plan ~3419 above, ./jtest. 36 dot-tc tests. The collectively are a
+development plan: get each to work in numeric order.
+
+			Running test 40, NEEDS mc 101
+101 is printf, which needs varargs. Heavy goal. Studying the C code already
+copied into MC.java. ./jc barfs 10 times.
+Var doesn't even do arrays yet. Agenda should be: arrays, varargs, M101.
+What test is JUST arrays? Probably in the test.c hard coded. 
+CASES:
+	1..6		vartab
+	7..9		lit,decl,properties
+	11..17		stack,skip,rem,konst,factor,more vartab
+	18..20		asgn,reln
+	22			first array decl, char p(7). Examined array content was 0's.
+	23			more vartab/stack
+	24			more array: int x(2); x(1)=77; array assign. First use of st().
+	25..29		MC 1
+22 and 24 seem to cover explicit array testing.
+24: testSetup(" int x(2); x(1)=77; xXX...XXXXXXXXXXXX...XXXXx");
+	parse 'int x(3)', display memory block showing 12 bytes of 0's
+	then parse x(1)=77;\n, display hex 58 in 5th byte. 
+---------------------
+
+Sat Aug 13
+GOAL: design and run test 24.
+	main[ caused RBRCERR. main [ fixed it.   <<== Vartab.tclink()
+	24.tc printed 0 0 0, not 0 5 0. But it ran, no eset.
+Design issue: How to represent int x(9) as a var. Is each cell an Ival? That
+duplicates lots of data: type,len,lvalue,isArray, PLUS int/char val. OR is
+val an int/char array of appropiate size. 
+trek.tc has matrix z declared as int z(175). If each datum is 40 bytes: 7000
+bytes instead of 140. Do I implement class Iarray/Carray extends Stuff? That
+simplifies Exp a lot, and is probably simple enough in Stuff. OR add logic to
+I/Cval: val is an array of length len. Use isArray to set/getInteger values. And
+offer an subscript arg version of set/get. Work at int level, not Stuff.
+---------------------
+
+Sun Aug 14
+Two plans. Not sure which is cleaner.
+	2 new Stuffs: int and char array: C/Iarray extends Stuff. 
+	I/Cval add array setter/getter. Its val becomes val[0], an array.
+Trying the latter. Stuff has
+	public int len;            // 1 for datum, else length of array
+    public boolean lvalue;
+    public boolean isArray;    // used to be 'class,' 0 for datum 1 for array
+Ival has   int val;
+	change latter to int val[len]. 
+	Change len to 0 for false isArray. 
+	change return to return val[0].
+	add set/get([|val,]subscript){}   DONE
+---------------------
+
+Wed Aug 17
+Stuff.main tests array OK. New api...
+nonsense set/getInt now set TYPEERR, and getters return -9999999 as another
+signal. MAYBE making these non-abstract and deleting the nonesense overrides
+would make nonesense usage compile time errors. 
+Pval is a Stuff set to the '77 'where' for functions. Only a getInt() is needed.
+Back to expr and jtest/24.tc...
+	./r TC jtest/24.tc     <<==  5 pn's print all 0's. NEED to print array name
+as pointer twice, then 0 7 0.
+Check eq(), does it assign to an array element ???
+Check pn args, does it setarg an array name properly ???
+	Add to test:   x = 99; pn x
+Eq01.eq()...            x(5) = 7
+			public static void eq() {
+		System.err.print("\nEq01~25, eq(): ");
+				int value = stk.toptoi();     // 7, pushed konst, OK
+				Stuff lval = stk.popst();     // Ival:5, value of subscript
+				lval.setInt(value);           
+				stk.pushStuff(lval);
+				stk.dump("After push: ");
+			}
+The x(5) was pushed as Ival:5. Need to recognize x(5) isArray==true AND continue
+parsing. ALSO the 5 is an Ival CONSTANT. NEEDs lval=false. The assignment
+assigned a new value TO A CONSTANT!
+  $ ./gj isArray | grep if
+	Expr.java:328:  if( v.value.isArray ) {
+	Stack.java:55:  if( top.isArray ) {
+---------------------
+
+Thur Aug 18
+Status: src/../Ival.api text file, 15 lines. Full api.txt in base dir: tiny-c.
+	.jc compiles
+	.r Stuff unit test OK.
+	.r TC jtest/24.tc:  0 0 0 0  should be  x 0 7 0 for some x. The 7 is the issue
+factor~329 NEEDs to handle array elements.  
+konst NEEDs to set lvalue false.
+	Stuff, ADDed     public void setConstant() { lvalue=false; }
+factor~343 covered java code, resolve(), needs work.     <<== NEXT
+	Expr~352 must return a Stuff, not an int. 
+		Need help from Stuff.java.  DONE, Stuff~180. Ival.getStuff(int
+		subscript) returns new Ival(). That is OK because the array elements
+		were never wrapped but they must be when pushed onto the stack for
+		calculations. 
+---------------------
+
+Tue Aug 30
+BACK from nice Catskills vacation w/ Mark & family.
+STATUS:
+x	Ival.getStuff(int subscript) returns a newly wrapped Ival, Stuff~182.
+	Expr.factor~329 NEEDs to use that, and resolve needs work, 
+	AND Cval will need same.
+x	Stuff has setConstant() which sets lvalue=false; One call: Stuff~35.
+Getting crash: LVALERR, 0 is not assignable, toptoi(), Stack~69.
+---------------------
+
+Wed Aug 31
+./r TC foo.tc
+running TC.main
+TJ~33 eset: 
+lib 
+line 61 (cursor prog[1123]): LVALERR, not assignable
+---
+pl char b(0) [
+          ^
+---------------------
+
+Thur Sept 1
+Debugging setArg...
+at tg37.tinyc.Expr.setArg(Expr.java:37)
+at tg37.tinyc.Expr.setArg(Expr.java:57)
+at tg37.tinyc.ST.varAlloc(ST.java:208)
+at tg37.tinyc.ST.varAlloc(ST.java:216)
+at tg37.tinyc.ST.varAlloc(ST.java:218)
+TJ~33 eset: 
+lib 
+line 61 (cursor prog[1123]): LVALERR, not assignable
+pl char b(0) [
+          ^
+DONE
+----
+tracing setArg and varAlloc. 
+	NEED to correlate with cursor. 
+	NEED fcn that dumps the line/cursor: Dialog.dumpLine(String msg);
+		Add this to trace()...
+------------------------
+====>>> in setArg
+: 9 9 at tg37.tinyc.Expr.setArg(Expr.java:37)
+...
+pl char b(0) [
+^
+Before varAlloc: 0 0 at tg37.tinyc.Expr.setArg(Expr.java:57)
+IN varAlloc: 0 0 at tg37.tinyc.ST.varAlloc(ST.java:208)
+BEFORE lit (: 0 0 at tg37.tinyc.ST.varAlloc(ST.java:216)
+IN lit (: 0 0 at tg37.tinyc.ST.varAlloc(ST.java:218)
+TJ~33 eset: 
+lib 
+line 61 (cursor prog[1123]): LVALERR, not assignable
+pl char b(0) [
+          ^
+DONE
+---------------------
+
+Sat Sept 3
+Can I fix setArg using klone()??? Will it work with arrays??? The Stuff.klone()s
+seem simplistic, for non arrays. They return new Xval(value). 
+		pl char b(0) [
+				MC "%c%s", 10, b, 101
+		]
+What is the klone() of b(0) ???  The C code for setArg...
+	void _setArg( Type type, struct stackentry *arg ) {
+			union stuff vpassed  = (*arg).value;
+			char* where;
+			int class = (*arg).class;
+			int lvalue = (*arg).lvalue;
+			int stacktype = (*arg).type;
+			if( lvalue=='L') {
+					where = (char*)vpassed.up;
+					if( class==1 ) { 
+							vpassed.up = *((char**)(*arg).value.up);
+					}
+					else if( stacktype==Int ) vpassed.ui = get_int(where);
+					else if( stacktype==Char) vpassed.ui = get_char(where);
+							/* ui to clear high order byte */
+			}
+			_varAlloc( type, &vpassed);
+	}
+What is on the stack when _setArg is called?
+Stuff.dump(msg) does not show all, just value. FIXED.
+	isArray should be true. A string is a char array.   <<====
+---------------------
+
+Sun Sept 4
+GOAL: robust Stuff.klone()
+	Stuff constructor takes 4 args. Called via Cval.super(,,,,)~144, etc.
+	Cval has 2 constructors, array and datum.
+	The Xval constructors assume array or not, (and differently)...
+		Sval false, Cval true,false,  Ival true,false, Pval false, Fval true
+        ~127             144   158          179  197     ???         xxx
+The role of Pval is still vague. Seems to duplicate Ival's array.
+	But it show up in Stack~81 and Vartab~142. Both just extend the confusion...
+		Stack: should be Ival array.
+		Vartab: Pval is used where it should be Fval.
+	Is Pval dead yet ??? YES!              <<<<<====   GONE.
+Mystery: Fvar remains. Somewhere it's klone() ~281 is called. But it is never
+stacked. Thread.dumpStack();     Var~56   <<==
+		Stuff~232, shouldnt get here
+		java.lang.Exception: Stack trace
+			at java.base/java.lang.Thread.dumpStack(Thread.java:1383)
+			at tg37.tinyc.Fvar.klone(Stuff.java:233)
+			at tg37.tinyc.Var.<init>(Var.java:56)
+			at tg37.tinyc.Vartab.tclink(Vartab.java:143)
+			at tg37.tinyc.TC.initAndGo(TC.java:57)
+			at tg37.tinyc.TC.main(TC.java:68)
+tclink~143, Vartab. Why is tclink doing clones ???
+	Var.<init> calls Fvar.klone(). 
+---------------------
+
+Wed Sept 7
+STATUS: Dozens of 'shouldnt get here' Stuff~232 messages. Eventually null ptr
+exception...  FIXED
+---------------------
+
+Thur Sept 8
+LVALERR on sym 'main'...
+	Two ways to label type, 
+		TJ~14: enum Type {CHAR, INT, FCN, STR };
+			Stuff~225 (other ~) uses this
+			$ ./gj Type | grep TJ.Type     <<== 28 uses
+	char getType() returns one of F,I,C,or S.   <<== 6 uses, all in Stuff
+UNIFY on the enum.     <<<<====  DONE
+---
+Now getting TYPEERR, also on symbol 'main.'	 Expr~325,334...
+		SYM: : ->main<-
+		at tg37.tinyc.Expr.factor(Expr.java:325)
+		Expr~330: tg37.tinyc.Fvar@1218025c
+		at tg37.tinyc.Expr.factor(Expr.java:334)
+		TJ~33 eset: 
+		seed 
+		line 0 (cursor prog[5]): TYPEERR
+		[main();]
+			^
+		DONE
+Getting to pl defn in library.tc...
+		lib 
+		line 61 (cursor prog[1123]): LVALERR, not assignable
+		pl char b(0) [
+				  ^
+		java.lang.Exception: Stack trace
+			at java.base/java.lang.Thread.dumpStack(Thread.java:1383)
+			at tg37.tinyc.TJ.eset(TJ.java:37)
+			at tg37.tinyc.Stack.toptoi(Stack.java:69)
+			at tg37.tinyc.ST.varAlloc(ST.java:222)
+How does toptoi handle an Fvar ??? It doesn't. New code needed here.
+STATUS: 
+	getting to foo.tc: pl "foo is here"
+	                   ^
+	        ONE arg parsed, pushed. Has to be the string ???  Assume yes.
+		getting to Expr~79, enter   pl char b(0)
+		                            ^
+		at Expr~54 calling eset()
+---------------------
+
+Fri Sept 9
+STATUS: getting to lib:    pl char b(0)      LVALERR
+                                     ^
+---
+	at tg37.tinyc.TJ.eset(TJ.java:37)
+	at tg37.tinyc.Stack.toptoi(Stack.java:69)
+	at tg37.tinyc.ST.varAlloc(ST.java:222)
+	at tg37.tinyc.Expr.setArg(Expr.java:55)   <<== here?
+	at tg37.tinyc.Expr.enter(Expr.java:113)
+	at tg37.tinyc.Expr.factor(Expr.java:332)
+	at tg37.tinyc.Expr.term(Expr.java:264)
+	at tg37.tinyc.Expr.expr(Expr.java:236)
+	at tg37.tinyc.Expr.reln(Expr.java:183)
+	at tg37.tinyc.Expr.asgn(Expr.java:160)
+	at tg37.tinyc.ST.st(ST.java:128)
+toptoi fails in varAlloc. What is top ???
+	stk.dump(""): (top is last): [Sval:foo is here, Ival:0]
+C's toptoi, stack.c~72, is a nightmare. J's is a partial recode. IS THE  PROB.
+	C's class==1 (J's dtod, still int) is 0 for datum, 1 for array.
+	array tested first. [stack.c, line 72, (use 'g72') ]
+       if( (*top).class==1 ) {
+                if((*top).lvalue == 'L') {
+                        ptr = (union stuff *)((*top).value.up);
+                        datum=(int)((*ptr).up);
+                }
+                else datum=(int)((*top).value.up);
+        }
+Very simple toptoi() fixed the above. Getting to MC 10 which uses MC 101
+(formatted):     MC "%c%s", 10, b, 101     <<== POPERR, nothing to pop
+	CLEANING out the debug dumps/traces/etc.
+MC.java: only MC 1 pc, 2 gch, pn 14 done yet.
+---------------------
+
+Sat Sept 10
+CHOICE: recode lib.pl()~60 using MC 1   OR   get MC 101 working.
+	The former is simpler, and will lead to a commit. Can redo later.
+STATUS: pl recoded, infinite loop. It parses b and i, not more.
+NEED: char array element b(i) to work at least as rvalue
+	assign i=i+1 to work
+	while test to work     <<== while(0) works, skips the block.
+ASSURE: b is a null terminated string.
 
 
 
@@ -3365,4 +3737,5 @@ Xval values, X= ICP
 
 
 
-	./r TC test.tc    <<== test run
+
+./r TC aa_test.tc    <<== test run

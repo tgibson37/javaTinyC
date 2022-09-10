@@ -35,28 +35,30 @@ public class Expr extends PT {
  */ 
 	void setArg( TJ.Type type, int arg ) {
 		Stuff valPassed = stk.peek(arg);
-/*		boolean isarray = valPassed.isArray;
+		boolean isarray = valPassed.isArray;
         boolean lvalue = valPassed.lvalue;
         TJ.Type stacktype = valPassed.type;
         if( lvalue) {
-            where = valPassed.up;
             if( isarray ) { 
-                valPassed.up = *((char**)(*arg).value.up);
-                 
-            } else
-            if( stacktype==Int ) valPassed.ui = get_int(where);
-            else if( stacktype==Char) valPassed.ui = get_char(where);
+            } 
+            else if( stacktype==TJ.Type.INT ) {
+//            	valPassed.ui = get_int(where);
+            }
+            else if( stacktype==TJ.Type.CHAR) {
+//            	valPassed.ui = get_char(where);
+            }
         }
-*/
+//System.out.println("Expr~54"+valPassed);    // IS:   Sval:foo is here   GOOD
+//trace(new Throwable(),"Before varAlloc",0,0);
         stmt.varAlloc( type, valPassed);
-
+//trace(new Throwable(),"After varAlloc",0,0);
     }
 
     public void enter(int where) {   // c code tc~307
 		int arg = stk.size();    // index to first parsed arg, if any
         int nargs=0;
         int varargs=0;
-trace(new Throwable(),"enter; arg,stk.size():",arg,stk.size());
+//trace(new Throwable(),"enter; arg,stk.size():",arg,stk.size());
         lit(xlpar); 		// optional (
         char x = tj.prog.charAt(tj.cursor);
         boolean haveArgs =  ! ( lit(xrpar)
@@ -72,14 +74,14 @@ trace(new Throwable(),"enter; arg,stk.size():",arg,stk.size());
                 if(tj.error!=0)return;
                 if( asgn()) ++nargs;
                 else break;  // break on error
-trace(new Throwable(),"after asgn: ",arg,stk.size());
+//trace(new Throwable(),"after asgn, nargs,stkSize: ",nargs,stk.size());
 			} while( lit(xcomma) );
         }
         if(tj.error!=0)return;
         lit(xrpar);   // optional )
         rem();
         if(where==0) {
-trace(new Throwable(),"MC: ",arg,stk.size());
+//trace(new Throwable(),"MC: ",arg,stk.size());
             if(stk.size()>0) {
                 MC.machinecall( nargs );
 //              varargs=0;
@@ -89,7 +91,7 @@ trace(new Throwable(),"MC: ",arg,stk.size());
         }
 // ABOVE  ^^^^   parse the args, set cursor
 // BELOW  vvvv   parse the parameters, declare/set their values, st() the body
-trace(new Throwable(),"BELOW",arg,stk.size());
+//trace(new Throwable(),"BELOW",arg,stk.size());
 		int localstcurs=tj.stcurs, localcurs=tj.cursor;
         tj.cursor = where;
         vt.newfun();
@@ -100,7 +102,7 @@ trace(new Throwable(),"BELOW",arg,stk.size());
 				  do {
 					  setArg(TJ.Type.INT, arg);
 					  arg++;
-trace(new Throwable(),"int",arg,stk.size());
+//trace(new Throwable(),"int",arg,stk.size());
 				  } while(lit(xcomma));
 				  lit(xsemi);    // optional
 			}
@@ -108,7 +110,7 @@ trace(new Throwable(),"int",arg,stk.size());
 				do {
 					setArg(TJ.Type.CHAR, arg);
 					arg++;
-trace(new Throwable(),"char",arg,stk.size());
+//trace(new Throwable(),"char",arg,stk.size());
 				} while(lit(xcomma));
 				lit(xsemi);
 		   }
@@ -117,14 +119,14 @@ trace(new Throwable(),"char",arg,stk.size());
 //			   break;
 //		   }
 		   else {
-trace(new Throwable(),"break",arg,stk.size());
+//trace(new Throwable(),"break",arg,stk.size());
 			   break;
 		   }
 	   }
 // assure number of args == number of parms, clean up...
 	   if(varargs==0) {
 		   if(arg != stk.size()) {    // <<<===  ISSUE
-trace(new Throwable(),"ISSUE",arg,stk.size());
+//trace(new Throwable(),"ISSUE",arg,stk.size());
 				tj.cursor=localcurs;
 				tj.stcurs=localstcurs;
 				tj.eset(tj.ARGSERR);
@@ -134,7 +136,6 @@ trace(new Throwable(),"ISSUE",arg,stk.size());
 				--nargs;
 			}
 		}
-// */
 		if(tj.error==0)stmt.st();     //  <<-- execute fcn's body
 		else {
 			dl.whatHappened();
@@ -314,34 +315,50 @@ PT.dumpSym("\nSYM: ");
                 enter(0);
                 return;
             } else {
+//trace(new Throwable());
                 Var v = vt.addrval();  /* looks up symbol */
                 if( v==null ) {
                     tj.eset(tj.SYMERR);    /* not declared */
                     return;
                 }
+//System.err.println("Expr~330: "+v.value);
 				TJ.Type type=v.type;
                 if( v.value.isFcn() ) {
                     int where = v.value.getInt();
-                    enter(where);
+//trace(new Throwable(),"is function, BEFORE enter",0,where);
+                   enter(where);
                 }
                 else {   /* is var name */
+//trace(new Throwable());
                     if( v.value.isArray ) {
                     	Stuff element = resolve(v.value);
 						stk.pushStuff( element );
                     } else {
-trace(new Throwable(),"var not array",v.value.getInt(),v.value.getInt());
 						stk.pushStuff( v.value );
                     }
                 }
             }
+//trace(new Throwable());
         }
         else {
             tj.eset(tj.SYNXERR);
         }
     }
-	/* If ( return the subscripted element, else the array itself as lvalue. */
+// if '(' return the subscripted element, else the array itself as lvalue. 
     Stuff resolve(Stuff array) {
-    	return array;
+		if( lit(xlpar) ) {
+			asgn(); 
+			if( tj.error!=0 )return null;
+			lit(xrpar);
+			int subscript = stk.toptoi();
+			if(array.len>=0)if( subscript<0 || subscript>=array.len ){
+				tj.eset(tj.RANGERR);
+				return null;
+			}
+			Stuff foo = array.getStuff(subscript);
+			return foo;
+		}    	
+		return array;
     }
 
     public Stuff konst() {
@@ -357,8 +374,9 @@ trace(new Throwable(),"var not array",v.value.getInt(),v.value.getInt());
             tj.lname = tj.cursor;
             String s = tj.prog.substring(tj.fname,tj.lname);
             int i = Integer.parseInt(s);
-trace(new Throwable(),"konst",i,i);
-            return new Ival(i);
+			Stuff k = new Ival(i);
+			k.setConstant();
+            return k;
         } else if(lit("\"")) {
             tj.fname=tj.cursor;
             x = findEOS(tj.fname);
@@ -421,11 +439,13 @@ trace(new Throwable(),"konst",i,i);
         return s;
     }
     private static String trace(Throwable t, String msg, int i, int j) {
+    	dl.dumpLine("Expr~443");
         System.err.print(msg+": "+i+" "+j+" ");
         return trace(t);
     }
 /* USAGE:
         trace(new Throwable());   //<<-- this is a trace mark
         trace(new Throwable(),"message");   //<<-- mark with message
+//trace(new Throwable(),"konst",i,i);
 */
 }

@@ -5,7 +5,6 @@ import java.io.StringWriter;
 import java.io.PrintWriter;
 
 public class MC {
-	
 	static Stack stk = Stack.getInstance();
 	static ST stmt = ST.getInstance();
 	static Vartab vt = Vartab.getInstance();
@@ -21,6 +20,59 @@ public class MC {
         }
         return instance;
     }
+
+/*	used by printf,ps,pl. Prints one token of format string;
+ *	either a %<char> or a block of chars excluding %. Recursive
+ *	until whole fmt string consumed.
+ */
+/*
+void pFmt(char *fmt, int *args) {
+	char pct[9], *nxtpct;
+	int datum, fmtchar;
+	if(!(*fmt))return;
+//printf("\n~69 %s<<--\n",fmt);
+	if(*fmt=='%'){
+		datum = *(args++);
+		int i=0;
+		while(i<5){
+			pct[i++]=*(fmt++);
+			pct[i]=0;
+			if(charIn(*fmt,"dscx")){
+				pct[i++]=*(fmt++);
+				pct[i]=0;
+				break;
+			}
+			else if(!isdigit(*fmt))break;
+		}
+//printf("\n  ~82 %s<<--\n",pct);
+		if(i>=5)printf("\nBAD FMT, max 3 digits, then one of dscx\n");
+		else printf(pct,datum);
+	}
+	else if( (nxtpct=find(fmt,fmt+strlen(fmt),'%')) ) {
+		pft(fmt,nxtpct-1);	/* block print 
+		fmt = nxtpct;
+	}
+	else {
+		ps(fmt);
+		return;      /* one item done 
+	}
+	pFmt(fmt, args); /* do the rest 
+	return;
+}
+
+
+/* new MC's with this implementation. A bit of modernization. 
+int MprF(int nargs, int *args)
+{
+}
+/*
+printf("\n\n63: MprF: nargs %d args[0..3] %d %d %d %d",
+			nargs,args[0],args[1],args[2],args[3]);
+	pFmt((char*)*args,(args+1));  /* fmt, args 
+	return 0;
+}
+*/
+
 //MC 1
 	int Mpc(int args[]){
 		System.out.print((char)args[0]);
@@ -36,9 +88,13 @@ public class MC {
    		buff_len = _buff.length();
    		buff_nxt = 0; 
    		int x = (buff_nxt<=buff_len-1) ? _buff.charAt(buff_nxt++) : '\n'; 
-trace(new Throwable(),"Mgch returning: ",x,x);
     	return x;
     }
+//MC 14
+	int Mpn(int args[]){
+		System.out.print(" "+args[0]);
+		return 0;
+	}
     
 /*	code the MC above and register in Names array. Placement in the array
  *	determines the MC number starting with 1, 101, 201.

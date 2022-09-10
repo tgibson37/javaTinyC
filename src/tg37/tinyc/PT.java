@@ -7,12 +7,9 @@ package tg37.tinyc;
 
 public class PT {
 	public static TJ tj;
-//	public static Dialog dl;
-	public static Eq01 eq;
 	
 	public PT(){ 
 		tj = TC.tj;
-		eq = Eq01.getInstance();
 	}
 		
     /************** literals **************/

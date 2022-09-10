@@ -45,8 +45,6 @@ void at(int line) {System.err.println("at Var: "+line);}
     /* SITUATION: Declaration is parsed, and its descriptive data known. Create
     	a Stuff and add it to curfun. Formerly newvar. */
     public Var( boolean isArray, TJ.Type type, int len, Stuff passed ) {
-//at(47);
-//System.err.println("Var~48 tj: "+tj);
         this.isArray = isArray;
         this.type = type;
         this.len  = len;

@@ -30,6 +30,7 @@ public class ST extends PT {
     }
     public void st() {
 //System.err.println("ST~29 cursor: "+tj.cursor);
+dl.showLine();
         int whstcurs, whcurs, objt, agin ;
         tj.brake=false;
         rem();
@@ -100,7 +101,6 @@ public class ST extends PT {
             rem();
         }
         else if(lit(xreturn)) {
-trace(new Throwable(),"=============>>>> ST~103, return; arg,stk.size():",0,0);
             char c = tj.prog.charAt(tj.cursor);
             boolean eos = ( lit(xrpar)
                             || c == '['
@@ -115,8 +115,6 @@ trace(new Throwable(),"=============>>>> ST~103, return; arg,stk.size():",0,0);
             }
             else {
                 exp.asgn();  /* specified return value */
-trace(new Throwable(),"===>> ST~118",0,0);
-System.err.println("ST~119, peek top: "+stk.peekTop());
             }
             tj.leave=true;		/* signal st() to leave the function */
             return;
@@ -205,7 +203,7 @@ System.err.println("ST~119, peek top: "+stk.peekTop());
      *      Parses one variable. Makes allocation and symbol entry.
      */
     public void varAlloc(TJ.Type type, Stuff vpassed) {
-        boolean isArray=false;
+		boolean isArray=false;
         int alen=1;
         if( !exp.symName() ) {         /*defines fname,lname. True is match.*/
             tj.eset(tj.SYMERR);
@@ -216,7 +214,9 @@ System.err.println("ST~119, peek top: "+stk.peekTop());
             isArray = true;   /* distance to data (was vclass) */
             int fn=tj.fname; /* localize globals that asgn() may change */
             int ln=tj.lname;
-            if( exp.asgn() ) alen=stk.toptoi()+1;  /* dimension */
+            if( exp.asgn() ){
+            	alen=stk.toptoi()+1;  /* dimension */
+            }
             tj.fname=fn;               /* restore the globals */
             tj.lname=ln;
             int x = mustFind(tj.cursor,tj.cursor+5,')',tj.RPARERR);
@@ -227,7 +227,7 @@ System.err.println("ST~119, peek top: "+stk.peekTop());
         }
         new Var(isArray, type, alen, vpassed);
     }
-// COPY FROM Projects/Java/TryIt/Trace ...
+// COPYed FROM Projects/Java/TryIt/Trace ...
     static String getStackTrace(Throwable t) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw, true);

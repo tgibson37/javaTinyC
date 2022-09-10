@@ -5,7 +5,10 @@ package tg37.tinyc;
 import java.util.*;
 
 public class Vartab extends PT {
-// variable containers...
+    static TJ tj;
+	static ST stmt;
+
+	// variable containers...
     public HashMap<String,Var> libs = new HashMap<String,Var>();
     public HashMap<String,Var> globals = new HashMap<String,Var>();
     public List<Map<String,Var>> locals = new LinkedList<Map<String,Var>>();
@@ -13,8 +16,6 @@ public class Vartab extends PT {
 
 void at(int line) {System.err.println("at Vartab: "+line);}
 
-    static TJ tj;
-	static ST stmt;
     private static Vartab instance;
     private Vartab(){}
     public static synchronized Vartab getInstance(){
@@ -138,8 +139,8 @@ System.err.println(", ---->"+tj.prog.substring(tj.cursor,tj.cursor+29) );
             }
             else if(symName()) {     /* fctn decl */
                 tj.cursor = tj.lname+1;
-                Stuff kursor = new Pval(tj.lname);
-                new Var(false, TJ.Type.FCN, 1, kursor); // ~65: self installed
+                Stuff kursor = new Fvar(tj.cursor);
+                new Var(false, TJ.Type.FCN, 1, null);
                 int xxx = mustFind(tj.cursor, tj.endapp, '[',tj.LBRCERR);
                 if(xxx>0) {
                     tj.cursor=xxx+1;    // just past the found [
