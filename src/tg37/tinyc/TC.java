@@ -55,6 +55,13 @@ public class TC {
 			Stack.getInstance();
 			tj.cursor = 0;   // seed
 			vt.tclink();
+//		TJ.traceON = true;     // true turns on tracing framwork.
+		TJ.traceON = false;
+//		TJ.symON = true;
+		TJ.symON = false;
+//		TJ.pushpopON = true;
+		TJ.pushpopON = false;
+			if(TJ.traceON)System.err.println("traceON is true, TC~58");
             stmt.st();
         } catch(Exception e) {
 e.printStackTrace();

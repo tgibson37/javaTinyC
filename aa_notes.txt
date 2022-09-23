@@ -3712,10 +3712,356 @@ Sat Sept 10
 CHOICE: recode lib.pl()~60 using MC 1   OR   get MC 101 working.
 	The former is simpler, and will lead to a commit. Can redo later.
 STATUS: pl recoded, infinite loop. It parses b and i, not more.
-NEED: char array element b(i) to work at least as rvalue
-	assign i=i+1 to work
+NEED: char array element b(i) to work at least as rvalue,
+	assign i=i+1 to work   <<== GOAL
 	while test to work     <<== while(0) works, skips the block.
 ASSURE: b is a null terminated string.
+---
+Eq01.java dated Aug 18 has primitive eq().
+	toptoi,popst,setInt,pushStuff,stk.dump   4 err.prints...
+		Eq01~25, eq(): value,lval: 0 Ival:0
+		After setInt, lval: Ival:0
+		After push: Stack dump, (top is last): [Ival:0]
+So: eq() works provided it has proper stack entries.
+	Where is eq() called ???     ./gj eq\(   <<== this grep works
+		Expr~160
+TIME TO FORMALIZE the test structure. 
+	Currently have script runall which called 5 mains.
+	Future test cases should be tc code. 
+	Currently ./r always runs foo.tc.
+		2 *.tc~:    aa_test.tc~ (Aug 3)   test.tc~ (Aug 1)
+		Test dir is copy of C tests, 24.tc 30..72 plus named tc's.
+		Test/30 is compound statement with 8 MC 1, printing "hello tc"
+		Test/34 has a main()[] and coded putchar,pft and ps
+		Test/40 has JUST a main calling putchar, ps, pl, pn
+====>>>>    and etc. These are an agenda for growing features.   <<<<====
+PLAN: Move foo.tc into Test, as 29.     LATER, get foo OK first.
+	ln -s Test/<current> foo.tc.
+	Modify script testall to directly use the passed Test/xxx.
+---
+status of code: prints 7 syms: main foo, pl, i, MC, MC, b;  ARGSERR
+		MC b(i),1
+		   ^
+STUDY: parsing b(i)...
+ALSO: the crash at Stuff~26, MC~141 (origMC)
+SYM: : ->b<-
+Stuff~26
+java.lang.Exception: Stack trace
+	at java.base/java.lang.Thread.dumpStack(Thread.java:1383)
+	at tg37.tinyc.Stuff.getInt(Stuff.java:27)
+	at tg37.tinyc.Stack.toptoi(Stack.java:53)
+	at tg37.tinyc.MC.machinecall(MC.java:197)
+b(i): b is parsed, i is not. Expr.factor~315...
+Yesterday I rewrote pl to loop on MC b(i),1 until b(i) was null. Then changed
+the while condition to 1, infinite loop. The idea was to get to i=i+1 and trace
+its parsing and hit a planted sysexit() to stop. Right now the while(1) crashes
+parsing b(i). Sym b is printed. Sym i is not. Using the lib as test case makes
+tracing too complicated. Try a tests leading to ps,pl,pn and while loops and
+break, etc.
+	foo.tc ->	Tests/21  main[ int i; i=i+1; ]  <<== somehow dump i.
+				Tests/22  main[ char b(9); b(5)='x'; ]
+---
+ALL NEW NUMBERING IN THE 20's. 
+./r <testnum>    The test tc code is at:   ./Tests/<tn>.tc
+	Numbered tests must have a main. Check those without dot-tc suffix.
+ISSUE: Test 20 requires a space after main: Ditto test 21.
+NOT 'main['  INSTEAD 'main ['
+	20	OK. 
+	21  OK
+	24	OK
+	29
+---
+Nice indented dump of: textcode, every sym, every push/pop effected using:
+	Expr~312; Eq01~25,32; Stk~143,152. These 5 under a trigger datum follow the
+	parsing nicely, showing all essential details. GOAL: put them under a
+	trigger, and maybe even a dash option to turn on the trigger. They form a
+	framework for detail dumps indented 4 spaces instead of 0 or 2.
+---------------------
+
+Mon Sept 12
+Trigger done: TC~58.
+	The old foo.tc is now Test/29.tc. Still crashes...
+			java.lang.Exception: Stack trace
+				at java.base/java.lang.Thread.dumpStack(Thread.java:1383)
+				at tg37.tinyc.Stuff.getInt(Stuff.java:27)
+				at tg37.tinyc.Stack.toptoi(Stack.java:53)
+				at tg37.tinyc.MC.machinecall(MC.java:197)
+				at tg37.tinyc.Expr.enter(Expr.java:86)
+				at tg37.tinyc.Expr.factor(Expr.java:315)
+Test/29.tc uses lib function pl. Need a test that is standalone. Tests/28.tc
+---
+Current work: test 24. should print: 0 7 0
+	decl: ST~184, calls varAlloc(type, null).
+--- 
+STARTING a simpler test 23: Just do pn. MC 14 exists.  <<-- WORKS
+24 declares an int array.
+---------------------
+
+Tue Sept 13
+int x(9) is todays goal, and x(5)=7, too.
+Turning on traceON. Test 24, only the decl is uncovered.
+		main [ int x(9) ]
+	$ cat aa_two.txt
+		traceON is true, TC~58
+		SYM: : ->main<-
+		Expr~330: tg37.tinyc.Fvar@2f2c9b19   <<-- main
+		  Stk~125 push: Ival:9
+		Expr~312, constant: Ival:9           <<-- subscript
+		  Stk~135 pop: Ival:9
+			  ST~232 Before new Var: true INT 10 null  <<--  GOOD
+			  Var~53: x: INT [10]
+			  Var~60
+		  Var~67, decl: x: INT [10]
+				EOS
+		  Stk~125 push: Ival:0   << eos push needed for decl
+		  Stk~135 pop: Ival:0    << eos pop after all stmts
+			EOS
+Ready to uncover the assign.
+pn prints 0 no matter what??? OR x(5) really is 0. 
+	NEED to dump the array. Can Stuff.dump do that???
+Stuff.dumpArray()~182 coded. Where to plant a call? Top AND bottom of eq().
+	lval in Eq01~29 is NOT the array, but should be just the array element.
+	Need to plant these calls where x, the Stuff array, is in hand.
+		Expr~160 is the ONLY call to eq().
+Where x gets parsed must be factor. Anytime a var is referenced make it the
+globally available "current data Sym,Stuff." Not fcns or constants, just
+variable data, type char and int. Vartab~50...
+    Global tj.curvar is set to latest parsed char/int variable.   DONE.
+Now use it somewhere. Before/after eq.eq() call. Expr~160.
+---------------------
+
+Wed Sept 14
+null curvar in eq()...
+	set: Vartab~51
+GOAL: set tj.curvar to most recent match int/char variable.
+	Is set at Vartab~53...
+        if(s.value.isChar() || s.value.isInt()){
+        	tj.curvar = s;   // used only for debug dumps
+        	System.err.println("Vartab~53,current: "+s);  // x INT[10]  REACHED
+	Is null when used in Expr~161...
+		if(lit(xeq)) {
+			asgn();
+		System.err.println("Expr~160 before eq"+tj);
+		System.err.println("Expr~161 before eq "+tj.curvar);    //  null curvar
+		System.err.println("Expr~162 before eq "+tj.curvar.value);
+		tj.curvar.value.dumpArray("Expr~160 before eq");
+REAL GOAL is this dumpArray ^^
+Are there two curvars? 2 copies of tj? 
+	~3839 above is ONLY setting. s can't be null. isInt is true.
+	Made curvar static. No crash. Natural exit.    FIXED but...
+New STATUS: s.dumpArray()~ a non-array. Is it x(5)?  Value 0. NEEDS STUDY.
+---------------------
+
+Thur Sept 15
+Plan: 
+x	clean out all dumps, 
+x	get clean run, "natural exit," BUT dumpArray test not working yet.
+	COMMIT, 
+	few well focused dumps.
+Rearranged Tests dir: renamed MegaTests, mkdir Tests, cp 20's over.
+	git add Tests/    <<== ADDED
+		REMEMBER: when I use test 30 cp -a the 30's.
+	./r not changed, still: ./r 25
+Back to testing dumpArray(). The issue is Expr~160, tj.cuvar.value is NOT an
+array...
+	The strategy is wrong. Before/after eq is too tricky. Need help from the
+	test itself. An MC ???
+MC MdumpArray(int args[]): Dumps the array in curval from/to args[0]/args[1]
+	using one of the available nafs.
+traceOn covers EOS. 
+x	turn on
+x	indent EQ01
+---------------------
+
+Fri Sept 16
+New plan: just dump the Ivar array into the toString(). 
+x	coded
+x	compiles
+	runs, "dumpArray works for Ival" NEED to downcast or ???
+	copied to AA.txt. Important part...
+		Expr~455 trace dumpLine......
+		main [ int x(9); x(5) = 7; x; ]
+		^
+		VVVVVVVVVVVVVVV: 0 0 at tg37.tinyc.Expr.factor(Expr.java:336)
+		at tg37.tinyc.Expr.factor(Expr.java:342)
+		  Stk~125 push: Ival:0        <--  assign push 
+		at tg37.tinyc.Expr.factor(Expr.java:347)
+		  Stk~135 pop: Ival:0        <--  eos pop
+				EOS
+		  Stk~125 push: Ival:0       <<--  x;  at end
+		at tg37.tinyc.Expr.factor(Expr.java:347)
+		  Stk~135 pop: Ival:0        <--  eos pop
+			EOS
+		natural exit
+resolve never called, Expr~339
+Only SYMs are main,x,x   NO MORE
+		main [ int x(9); x(5) = 7; x; ]
+Never reached the last x;     -----^
+	x(5)=7 caused st loop to end, or other "natural exit."
+	OR x was parsed but a SYM dump not reached: Expr~316.
+NEED 100% flow study from VVVVVVVV Expr~336. 
+AA.txt is current at 11:24. No code changes since them. 
+	25.tc has space before [.
+---
+Expr~336 is too late. By then wrong push for x(5). Resolve never called.
+varAlloc() ST~206... assume cursor just after int.
+createIval(.) 
+Ival has 2 constructors for datum and array. createIval uses only the first.
+	Var~52 NEEDS code to create arrays.    <<<===  ISSUE
+	varAlloc has code for datum AND array, which looks OK, but not proven.
+---------------------
+
+Sat Sept 17
+Goal: code at Var~52.
+x	Coded
+x	compiles
+	test OK
+x		array created, dumped, all 0 BEFORE x(5)=7
+		AFTER, still all zeros
+Goal: assign, subscripted lvalue
+	Studied
+eq.c: 4 cases, class (now dtod) 00 01 10 11
+	AND lvalue resolution for right side, (conditional)
+	AND subtle action statement.
+eq01.java: one case so far: 
+	stack has resolved lvalue, datum.
+	just does toptoi,pop,downcast,set,push
+	ISSUE: faithful code replica VS new design. Too many subtlys. Lots of code
+	but probably easier debugging. Maybe the if-else framework to the 8 cases
+	with only one really done ??? 
+lval INT case now in if(lval.isINT) wrapper, runs OK. value may be resolved by
+toptoi(). Our test case has x(5) lvalue, and I need to handle the (. That is
+done in factor(): x parsed, isArray, resolve called, 
+New symON flag, just symbols matched NOT full trace. TC~60.
+GOAL: GET x(5)=7 TO WORK. STATUS: need to trace the parsing and pushing.
+	in eq() dump the stack. Should be Ival datum (not array), 7.
+	Study resolve, that converts x(5) to Ival datum.
+	x is an array and its Ival has int val[10]. So resolve must manufacture an
+	Ival: isArray false, lvalue true, value val[5], and push that as the lvalue.  
+All resolve does is create an Ival wrapper around x(5) and return it. It gets
+stacked as the lvalue. Somehow eq will then change its val to 7 and push it.
+Somehow the 7 has to get back into the int array at x(5).
+Changes made so far...  (git diff)
+	Eq01, 29..  (needs more)
+	Expr, 361..
+	MC, 95.. Mexit
+	Stack, 59
+	Stuff, 31.., 68, 187, 190
+	Var, 63
+	Vartab, 50
+Flow through above...
+	PARSING: x(5)=7;
+		ST ~42, compund loop ~50 st call
+		st calls asgn ~127
+		st tunnels down asgn..factor
+	Expr~361 factor...
+		SYM x  ~312,330,332 is array, resolve call 333
+		resolve ~347..363 creates Ival wrapping x[5]
+		factor ~334 Ival pushed AS LVALUE    <<-- check this
+		Eq01.eq ~21 toptoi, pop, lval is int, downcast, setval, push
+	Expr 163  asgn() returns 'true.'
+---------------------
+
+Sun Sept 18
+To set x(5) needs a new array element Stuff: Pval, so it can call 
+setInt(Stuff array,int sub,int val). This setInt will be abstract with 2 impls:
+Ival,Cval. Pval constuctor would capture the array. Basically complexity of C's
+_eq() moves into Stuff. Overall simpler, Each element has simple task and
+together they do what the complex _eq() does.
+	CHANGES to above flow: ~3959 creates Pval.
+	STUDY needs code printout of above code. NEED specifc lines: from/to. Not
+	everything, just to cover the high level flow.
+Expr: factor 312..341, resolve 347..366
+Eq01: eq 21..38    
+STATUS: have notes on clipboard towards x(5)=7.
+x	Simplify eq()
+	AEStuff  (array element)
+x	resolve creates AEStuff
+---------------------
+
+Mon Sept 19
+How to klone an AEval ???  klone usage: Stuff 3 hits, Var 1.
+	Stuff: test main only.
+	Var~59: function argument, Used for pass by value.
+	Is x(5).klone() an I/Cval ??  YES
+	BUT int x(9); x.klone(); is pointer to x, so that allows fcn to access
+		elements.
+	So AEint.klone can return a typed Stuff: I/Cval, newly wrapped.
+	GO WITH THIS REASONING until some usage refines.
+Test 25.
+ 	eq pushes an Ival 7, Eq01~31.
+	Expr~361: foo is zero. eq pushed an Ival 7. That is correct value. But is
+	that value in x(5). The final x; has the answer. I would like to see the x
+	array dumped. Have factor flow after parsing that x. 
+---------------------
+
+Tue Sept 20
+Ival has: String valToString() but others do not. Used nowhere.
+	Stuff has 4 toString()s defined: 134,173,223,281. Sval,Cval,Ival,AEval.
+    Ival's:    if(isArray)return "int array["+len+"]" ;
+Adding the dumpArray: Stuff~190, and call at Expr~333, factor. 
+	Array all zeros before & after. Where to put the 7 ??? eq involved...
+		int value = stk.toptoi();
+		Stuff lval = stk.popst();    <<== actually AEval. klone won't do UNLESS
+			it is a full AEval. Currently the clone is an Ival.
+		lval.setInt(value);       <<==
+		AND AEval.setInt(value) must put value into its array.
+fixes:
+	AEval.klone() is full clone, not an Ival.
+	AEval.setInt() does its thing properly.
+Wrong. Ival owns the array. AE is JUST an element. But it must not lose its
+array and subscript. AE must access its value cell. I can call
+Ival.setInt(array,offset,val).
+---------------------
+
+Wed Sept 21
+Happy Fall, '22. Also happy AEval, the solution to a nasty...
+Goal: finish AEval and get test 25 to show the 7 in the array dump.
+	Simplify AEval. It is just an array element, with services...
+		set/getInt, toString, klone
+Got a 7 in 2nd dump, but at x[0], not x[5].    FIXED.
+	test 25 now OK.
+---------
+Goal: proper regression via testall script w/ keep/diff. Like tiny-c's.
+	Studying tiny-c's test system. Starting with test 73 uses bash script to
+	fire a testfile by file name, followed by "should get" comment...
+                case 73:
+                        testBash("./testFiles/test_app.sh pf");
+                        break;
+/*      Should get... 
+                                test_pf
+                                test_pf done
+ */
+------
+I'd like to avoid the writing java code with a giant switch. Just add a line
+into a testall shell script. Currently it has 2 tests: java mains for Stuff and
+Stack. They still run. I'd like to avoid src mains, too. Doesn't grow well.
+Numbering the tests suggests a simpler script structure. Each is a tc program
+What test work now?  testall, runall, Tests(with ~s removed.)
+----
+testall has echo outputs, probably stdout, and java code output, probably
+stderr. Redirecting each: testall > testout and testall 2> testerr...
+	Both worked. All output went to testour, none to testerr but it got created.
+Plan: testall is our starting place. Leave the Stack/Stuff mains there. Maybe
+add Var and Vartab. OR rename: testunits. And fresh testall 
+---
+Got proper before/after array dump, w/ x[5] == 7. Then deleted to much,
+including the array dumps. Trying to reproduce these dumps. Before/after Eq~30
+doesn't compile. lval is an AEval.    FIXED, Stuff~289.
+Tidy the output, leaving before/after array dump.     DONE
+---
+traceON dumps an outline, and AE's before/after array dump. The latter should be
+covered, but that makes test 25 outputting nothing. Another xxON flag is not
+justified. Rather test 25 needs to dump the array itself. That requires pn
+works. <<== GOAL     DONE, test 25 prints x[4,5,6] -->  0 7 0 <<== GOOD 
+==>>	New flag: pushpopON covers stk dumps. Currently false, off. TC~60.
+------------------------------------
+test 29 next: pl"foo is here"    <<=== currently bombs: Runs to end, no output.
+	Probably Cvar array issue.
+---------------------
+
+Wed Sept 21
+NEED: commit, then 29.
 
 
 
@@ -3736,6 +4082,4 @@ ASSURE: b is a null terminated string.
 
 
 
-
-
-./r TC aa_test.tc    <<== test run
+.r 25     <<-- test run

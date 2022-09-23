@@ -1,4 +1,7 @@
-# Usage: ./r TC foo.tc
+# Usage:   ./r <testNumber>
 clear
-java  tg37.tinyc.$*
+dt=$(date)
+echo $dt
+cat Tests/$1.tc
+java  tg37.tinyc.TC Tests/$1.tc
 echo DONE

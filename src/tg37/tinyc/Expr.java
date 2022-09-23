@@ -126,7 +126,7 @@ public class Expr extends PT {
 // assure number of args == number of parms, clean up...
 	   if(varargs==0) {
 		   if(arg != stk.size()) {    // <<<===  ISSUE
-//trace(new Throwable(),"ISSUE",arg,stk.size());
+trace(new Throwable(),"ISSUE",arg,stk.size());
 				tj.cursor=localcurs;
 				tj.stcurs=localstcurs;
 				tj.eset(tj.ARGSERR);
@@ -160,7 +160,6 @@ public class Expr extends PT {
                 if(tj.error==0)eq.eq();
             }
         }
-//System.err.println("Expr~168, returning from asgn, error: "+tj.error);
         return tj.error==0;
     }
 
@@ -307,55 +306,59 @@ public class Expr extends PT {
         }
 
         Stuff kon=konst();
-        if( kon!=null ) stk.pushStuff(kon);
+        if( kon!=null ) {
+        	stk.pushStuff(kon);
+        }
         else if( symName() ) {
-PT.dumpSym("\nSYM: ");
+        	if(TJ.traceON||TJ.symON)PT.dumpSym("SYM: ");
             tj.cursor = tj.lname;
             if( symNameIs("MC") ) {
                 enter(0);
                 return;
             } else {
-//trace(new Throwable());
                 Var v = vt.addrval();  /* looks up symbol */
                 if( v==null ) {
                     tj.eset(tj.SYMERR);    /* not declared */
                     return;
                 }
-//System.err.println("Expr~330: "+v.value);
 				TJ.Type type=v.type;
                 if( v.value.isFcn() ) {
                     int where = v.value.getInt();
-//trace(new Throwable(),"is function, BEFORE enter",0,where);
                    enter(where);
                 }
                 else {   /* is var name */
 //trace(new Throwable());
                     if( v.value.isArray ) {
+//trace(new Throwable());
+//v.value.dumpArray();
                     	Stuff element = resolve(v.value);
 						stk.pushStuff( element );
                     } else {
+//trace(new Throwable());
 						stk.pushStuff( v.value );
                     }
                 }
             }
-//trace(new Throwable());
         }
         else {
             tj.eset(tj.SYNXERR);
         }
     }
-// if '(' return the subscripted element, else the array itself as lvalue. 
+/* if '(' return the subscripted element, else the array itself as lvalue. */ 
     Stuff resolve(Stuff array) {
+//trace(new Throwable());
 		if( lit(xlpar) ) {
 			asgn(); 
 			if( tj.error!=0 )return null;
 			lit(xrpar);
 			int subscript = stk.toptoi();
+//trace(new Throwable(),"==>> subscript,len: ", subscript, array.len);
 			if(array.len>=0)if( subscript<0 || subscript>=array.len ){
 				tj.eset(tj.RANGERR);
 				return null;
 			}
-			Stuff foo = array.getStuff(subscript);
+			Stuff foo = Stuff.createAEval(array,subscript);
+//System.err.println("Expr~362, foo: "+foo);
 			return foo;
 		}    	
 		return array;
@@ -439,7 +442,7 @@ PT.dumpSym("\nSYM: ");
         return s;
     }
     private static String trace(Throwable t, String msg, int i, int j) {
-    	dl.dumpLine("Expr~443");
+    	dl.dumpLine("Expr~455 trace dumpLine...");
         System.err.print(msg+": "+i+" "+j+" ");
         return trace(t);
     }

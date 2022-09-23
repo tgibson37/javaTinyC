@@ -7,16 +7,21 @@ import java.util.*;
 public class Var extends PT {
 //a variable
     String name;
-    boolean isArray;
     TJ.Type type;
+    boolean isArray;
     int len;
     Stuff value;
+
     Vartab vt;
 
 void at(int line) {System.err.println("at Var: "+line);}
 
 	public String toString() {
-        return name+": "+value;
+		String details;
+		if(isArray) details = "["+len+"]" ;
+		else if(value!=null) details = value.toString();
+		else details="null";
+        return name+": "+type+" "+details;
     }
     public void dump(String msg) { System.out.println(msg+"Var dump: "+this); }
 
@@ -55,7 +60,11 @@ void at(int line) {System.err.println("at Var: "+line);}
         }
         else {    // declaration incl function parameter
             if(type==TJ.Type.INT) {
-                this.value = Stuff.createIval(0);
+            	if(isArray){
+            		this.value = Stuff.createIval(0,len);
+            	} else {
+            		this.value = Stuff.createIval(0);
+                }
             }
             else if(type==TJ.Type.CHAR) {
                 this.value = Stuff.createCval((char)0);
@@ -63,6 +72,7 @@ void at(int line) {System.err.println("at Var: "+line);}
             else if(type==TJ.Type.FCN) {
                 this.value = Stuff.createFvar(tj.cursor);
             }
+if(TJ.traceON)System.err.println("  Var~67, decl: "+this);
         }
         vt.curfun.put(name, this);
     }

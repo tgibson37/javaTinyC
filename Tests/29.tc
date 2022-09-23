@@ -1,0 +1,5 @@
+#test 29
+foo [
+	pl "foo is here"
+]
+main [ foo ]

@@ -1,4 +1,1 @@
-foo [
-	pl "foo is here"
-]
-main [ foo ]
+Tests/21.tc

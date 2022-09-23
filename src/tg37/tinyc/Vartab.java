@@ -42,11 +42,15 @@ void at(int line) {System.err.println("at Vartab: "+line);}
         else curfun = null;
     }
 
-    /* looks up a symbol at one level */
+    /* looks up a symbol at three levels */
     Var addrval_all(String sym) {
         Var s = curfun.get(sym);
         if(s==null)s = globals.get(sym);
         if(s==null)s = libs.get(sym);
+        if(s.value.isChar() || s.value.isInt()){
+        	tj.curvar = s;   // used only for debug dumps
+//System.err.println("Vartab~53,current: "+s);            // x INT[10]  REACHED
+        }
         return s;
     }
     /* looks up a symbol pointed to by fname,lname:
@@ -112,8 +116,6 @@ void at(int line) {System.err.println("at Vartab: "+line);}
         int savedCursor=tj.cursor;
         tj.cursor=0;
         if(checkBrackets(tj.lpr)!=0){
-System.err.print("Vartab~111, cursor: "+tj.cursor);
-System.err.println(", ---->"+tj.prog.substring(tj.cursor,tj.cursor+29) );
         	tj.eset(tj.RBRCERR+1000);
         }
         if(checkBrackets(tj.apr)!=0)tj.eset(tj.RBRCERR+2000);

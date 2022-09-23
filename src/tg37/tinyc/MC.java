@@ -95,6 +95,11 @@ printf("\n\n63: MprF: nargs %d args[0..3] %d %d %d %d",
 		System.out.print(" "+args[0]);
 		return 0;
 	}
+//MC 108
+	int Mexit(int args[]){ 
+		tj.eset(tj.EXIT);
+		return 0;
+	}
     
 /*	code the MC above and register in Names array. Placement in the array
  *	determines the MC number starting with 1, 101, 201.
@@ -138,7 +143,9 @@ printf("\n\n63: MprF: nargs %d args[0..3] %d %d %d %d",
 
 	static void origMC(int mcno, Stuff[] args) {
 		if(mcno<1 || mcno>origNames.length) {
-			stk.pushk(0); tj.eset(tj.ARGSERR);
+trace(new Throwable(),"origMC: ",mcno,origNames.length);
+			stk.pushk(0);
+			tj.eset(tj.ARGSERR);
 		}
 		else {
 			mc.invoke(origNames,mcno,args);

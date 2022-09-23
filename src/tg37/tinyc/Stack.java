@@ -59,7 +59,8 @@ return null;
 
     /* push an int as a class 1 */
     public void pushPtr(int datum) {
-        pushStuff( new Pval(datum) );
+//        pushStuff( new Pval(datum) );
+        pushStuff( new Fvar(datum) );
     }
 
     /* these two used by RELN */
@@ -121,9 +122,7 @@ class StackImpl {
         return list.size();
     }
     void push(Stuff value) {
-//Thread.dumpStack();
-//System.out.println("Stk~143 push: "+value.toString());
-//dl.dumpLine("Stk~144");
+		if(TJ.pushpopON)System.err.println("  Stk~125 push: "+value.toString());
         list.add(value);
     }
     Stuff pop() {
@@ -132,8 +131,7 @@ class StackImpl {
         }
         Stuff value = this.list.get(this.list.size() - 1);
         this.list.remove(this.list.size() - 1);
-//System.out.println("Stk~152 pop: "+value.toString());
-//dl.dumpLine("Stk~152");
+		if(TJ.pushpopON)System.err.println("  Stk~135 pop: "+value.toString());
         return value;
     }
     Stuff peek(int argp) {

@@ -6,6 +6,8 @@ NEED: lvalue service that returns an actual value Stuff. Expr~20.
 	Basically Stuff defines what goes on the Stack.
 */
 package tg37.tinyc;
+import java.io.StringWriter;
+import java.io.PrintWriter;
 
 abstract public class Stuff {
     public TJ.Type type;          // CHAR, INT, FCN, STR
@@ -13,30 +15,38 @@ abstract public class Stuff {
     public boolean lvalue;
     public boolean isArray;    // used to be 'class,' 0 for datum 1 for array
 	static TJ tj;
+	static Dialog dl;
 
 	Stuff(TJ.Type t, int l, boolean lv, boolean ia ) {
 		tj = TJ.getInstance();
+		dl = Dialog.getInstance();
 		
 		type = t;
         len = l;
         lvalue = lv;
         isArray = ia;
     }
-    public int getInt(){return -999999;}
+/* Not all Stuff can return an int. If not overridden...  */
+    public int getInt(){
+System.err.println("Stuff~26");
+Thread.dumpStack();
+    	return -999997;
+    }
+    public void dumpArray(){
+    	System.err.println("dumpArray works for Ival");
+    }
     public void setInt(int val){}
-    public int getInt(int sub){return -999999;}  // return element of array
+    public int getInt(int sub){return -999998;}  // return element of array
     public void setInt(int sub, int val){}  // set element of array
     public Stuff getStuff(int sub){return null;}     // return element wrapped as Stuff
+    public int[] getIntArray(){tj.eset(tj.TYPEERR);return null;}
+    public char[] getCharArray(){tj.eset(tj.TYPEERR);return null;}
 
     public void dump(String msg){ 
     	System.out.println(msg+this.toString());
     	System.out.println("  type,len,lvalue,isArray: "+type+" "+
     		len+" "+lvalue+" "+isArray );
     }
-//    public char getType() {   // 'F', 'I' ,'C', or 'S'
-//        String t = this.getClass().toString();
-//        return t.charAt( t.length()-4 );
-//    }
     public void setConstant() {
     	lvalue=false;
     }
@@ -61,8 +71,14 @@ abstract public class Stuff {
     public static Ival createIval(int i) {
         return new Ival(i);
     }
+    public static Ival createIval(int i, int len) {
+        return new Ival(i,len);
+    }
     public static Cval createCval(char c) {
         return new Cval(c);
+    }
+    public static AEval createAEval(Stuff array, int sub) {
+        return new AEval(array, sub);
     }
     public static Fvar createFvar(int cursor) {
         return new Fvar(cursor);
@@ -140,6 +156,7 @@ class Cval extends Stuff {
         val = new char[len];
         val[0]=v;
     }
+    public char[] getCharArray(){ return val; }
 	public int getInt(int sub) {
 		if(0<=sub && sub<=len) return (int)val[sub];
 		tj.eset(tj.RANGERR); return 0;
@@ -161,7 +178,7 @@ class Cval extends Stuff {
         val[0] = (char)v;
     }
     public String toString() {
-        return "Cval:"+String.valueOf(val);  //  <<===   ???
+        return "Cval:"+String.valueOf(val);
     }
     public Stuff klone() {
         return new Cval(val[0]);
@@ -175,6 +192,17 @@ class Ival extends Stuff {
         super(TJ.Type.INT,len,true,true);
         val = new int[len];
         val[0] = v;  // might as will use v for something.
+    }
+    public int[] getIntArray(){ return val; }
+    // Don't use on huge arrays...
+    public void dumpArray(){
+    	System.err.println("Stuff.arrayDump: ");
+    	String s = "val: " + val[0];
+    	if(isArray){
+    		for(int i=1; i<len; ++i)s += (", "+val[i]);
+    		System.err.print(s);
+    	}
+    	else System.err.println("Not an array, val: "+val[0]);
     }
 	public int getInt(int sub) {   // Maybe not useful, getStuff() is better.
 		if(0<=sub && sub<=len) return val[sub];
@@ -239,6 +267,90 @@ System.exit(99);
     }
     public int getInt(int sub){
     	tj.eset(tj.TYPEERR);
-    	return -999999;
+    	return -999998;
     }
 }
+/*	Typeless array element. Value is element in parent array. 
+ */
+class AEval extends Stuff {
+    int val[];   // This array exists in the parent I/Cval
+    int subscript;
+// datum
+    AEval(Stuff array, int subscript) {
+        super(array.type, 1, true, false);    // type,len,lvalue,isArray
+    	val = array.getIntArray();
+    	this.subscript = subscript;
+//trace(new Throwable(), "======>> AEval(..): ", subscript, 999);
+    }
+    public int getInt() {			// from parent
+        return val[subscript];
+    }
+    public void dumpArray(){
+    	int len = val.length;
+    	if(len>10)len=10;
+    	System.err.println("Stuff.arrayDump: ");
+    	String s = "val: " + val[0];
+		for(int i=1; i<len; ++i) s += (", "+val[i]);
+		System.err.print(s);
+    }
+    public void setInt(int v) {		// to parent
+    	if(TJ.traceON)dumpArray();
+        val[subscript] = v;
+        if(TJ.traceON)dumpArray();
+    }
+    public String toString() {
+    	String s = "AEval: ";
+    	if(isArray){
+    		s += "array["+val.length+"]: " ;
+    		s += "val["+subscript+"]: "+val[subscript];
+    	}
+        else s += "datum: "+val[0];
+        return s;
+    }
+// klone used for function arguments, read only. Hence clone is I/Cval.
+    public Stuff klone() {
+    	Stuff k;
+    	if(type==TJ.Type.INT)k = createIval(val[subscript]);
+    	else k = createCval((char)val[subscript]);
+        return k;
+    }
+// COPY FROM Projects/Java/TryIt/Trace ...
+    static String getStackTrace(Throwable t) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw, true);
+        t.printStackTrace(pw);
+        pw.flush();
+        sw.flush();
+        return sw.toString();
+    }
+    private static void process(String s){
+        s = munge(s);     // uncover to simplify the output
+        System.err.println(s);
+    }
+    private static String munge(String s){
+        s = s.substring(s.indexOf("at"));
+        s = s.substring(0,s.indexOf("\n"));
+        return s;
+    }
+    private static String trace(Throwable t){
+        String s = getStackTrace(t);
+        process(s);
+        return s;
+    }
+    private static String trace(Throwable t, String msg, int i, int j) {
+    	dl.dumpLine("Expr~455 trace dumpLine...");
+        System.err.print(msg+": "+i+" "+j+" ");
+        return trace(t);
+    }
+/* USAGE:
+        trace(new Throwable());   //<<-- this is a trace mark
+        trace(new Throwable(),"message");   //<<-- mark with message
+//trace(new Throwable(),"konst",i,i);
+*/
+}
+/*    inherited...
+    public TJ.Type type;          // CHAR, INT, FCN, STR
+    public int len;            // 1 for datum, else length of array
+    public boolean lvalue;
+    public boolean isArray;    // used to be 'class,' 0 for datum 1 for array
+*/

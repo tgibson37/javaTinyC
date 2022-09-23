@@ -12,6 +12,7 @@ public class TJ {
 	public Dialog dl;
 	public PT pt;
     public enum Type {CHAR, INT, FCN, STR };
+    public static Var curvar;     // only most recent char or int parsed
     
     private static TJ instance;
     private TJ(){
@@ -57,6 +58,9 @@ public class TJ {
     static int fname,lname;  // most recently matched symbol
     static boolean leave;	// set true by return statement
     static boolean brake;	// set true by break statement
+    static boolean traceON; // default false, set in TC~65.
+    static boolean symON;   // default false, set in TC~65.
+    static boolean pushpopON;   // default false, set in TC~65.
 // leave and brake are restored to false when their respective action is complete.
 
     /* type flags */

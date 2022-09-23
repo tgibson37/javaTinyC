@@ -22,14 +22,14 @@ public class Eq01 extends PT {
  *	Effects the assignment. 
  */
 	public static void eq() {
-System.err.print("\nEq01~25, eq(): ");
+		if(TJ.traceON);
+//stk.dump("\nEq01~26, stk before pops: ");
 		int value = stk.toptoi();
 		Stuff lval = stk.popst();
-System.err.println("value,lval: "+value+" "+lval);  // 7, Ival:5
 		lval.setInt(value);
-System.err.println("After setInt, lval: "+lval);  // Ival:5
 		stk.pushStuff(lval);
-		stk.dump("After push: ");
-System.err.println("");
+		if(TJ.traceON)stk.dump("Eq01~32, After assignment push: \n");
+//stk.dump("\nEq01~32, After assignment push: ");
+//System.err.println("");
 	}
 }

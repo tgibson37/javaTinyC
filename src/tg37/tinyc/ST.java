@@ -30,7 +30,7 @@ public class ST extends PT {
     }
     public void st() {
 //System.err.println("ST~29 cursor: "+tj.cursor);
-dl.showLine();
+//dl.showLine();
         int whstcurs, whcurs, objt, agin ;
         tj.brake=false;
         rem();
@@ -48,6 +48,7 @@ dl.showLine();
                     return;
                 }
                 st();
+                if(TJ.traceON)System.err.println("        EOS");
             }
         }
         else if(lit(xif)) {
@@ -211,11 +212,14 @@ dl.showLine();
         }
         tj.cursor=tj.lname;
         if( lit("(") ) {
+//System.err.println("    ST~214, varAlloc array: ");
             isArray = true;   /* distance to data (was vclass) */
             int fn=tj.fname; /* localize globals that asgn() may change */
             int ln=tj.lname;
+//System.err.print( tj.prog.substring(fn,ln) );
             if( exp.asgn() ){
             	alen=stk.toptoi()+1;  /* dimension */
+//System.err.print(", alen="+alen);
             }
             tj.fname=fn;               /* restore the globals */
             tj.lname=ln;
@@ -225,6 +229,7 @@ dl.showLine();
             isArray = false;
             alen = 1;
         }
+//System.err.println("      ST~232 Before new Var: "+isArray+" "+type+" "+alen+" "+vpassed);
         new Var(isArray, type, alen, vpassed);
     }
 // COPYed FROM Projects/Java/TryIt/Trace ...

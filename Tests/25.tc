@@ -1,0 +1,1 @@
+main [ int x(9); x(5) = 7; pn x(4); pn x(5); pn x(6);]

@@ -71,7 +71,7 @@ public class PT {
         return false;
     }
     /* Parse a symbol defining fname, lname. ret: true if symbol.
-     *      Advances the cursor to but not over the symbol,
+     *      Advances the cursor to BUT NOT over the symbol,
      */
     boolean symName() {
         int temp;
@@ -81,12 +81,12 @@ public class PT {
         if( Character.isLetter(c) || c=='_') tj.fname = temp;
         else return false;
         while( Character.isLetterOrDigit(c=tj.prog.charAt(++temp)) || c=='_') ;
-        tj.lname = temp;
+        tj.lname = temp;    // INCLUSIVE-EXCLUSIVE f/lname
         return true;  /* good, fname and lname defined */
     }
     /* dump the most recently parsed symbol (or constant) */
     public static void dumpSym(String msg){
-    	System.out.print(msg + ": ->"+tj.prog.substring(tj.fname,tj.lname)+"<-\n");
+    	System.err.print(msg + ": ->"+tj.prog.substring(tj.fname,tj.lname)+"<-\n");
     }
 /* dump current line with ^ under cursor
     void dumpLine(String msg){
@@ -106,7 +106,8 @@ System.err.println("PT~94 ");
 					   " "+new Throwable().getStackTrace()[1].getMethodName() +
 				  " line "+new Throwable().getStackTrace()[1].getLineNumber());
 	}
-    /*	return true if symname matches arg, no state change
+    /*	return true if symname matches arg, no state change. 
+     *	Prereq: symName call.
      */
     boolean symNameIs(String name) {
         String tok = tj.prog.substring(tj.fname, tj.lname);
