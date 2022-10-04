@@ -1,0 +1,17 @@
+test status
+latest on top
+---
+Oct 4, 2022
+test 29 OK
+---
+prior to 10/4...
+Tests 20 through 28 OK (only 6)
+===
+About testing...
+The C version had a testMain with a huge switch to tests 1..94. But I did have
+fragments of tc code starting with test 20. So in this java version early unit
+tests were coded into various class main(..)s. For my sanity I kept tests from
+20 up with the same numbers, e.g. 20.tc. The final result is a much simpler test
+system: one small shell script 'r <number>' for run, plus a Tests directory with
+numbered tc code. No huge switch.
+Tom

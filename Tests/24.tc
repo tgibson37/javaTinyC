@@ -3,7 +3,7 @@ main [
 	int x(9)
 	x(5) = 7
 	x
-//	pn x(4)
-//	pn x(5)
-//	pn x(6)
+	pn x(4)
+	pn x(5)
+	pn x(6)
 ]
