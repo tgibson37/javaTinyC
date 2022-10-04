@@ -28,7 +28,7 @@ abstract public class Stuff {
     }
 /* Not all Stuff can return an int. If not overridden...  */
     public int getInt(){
-System.err.println("Stuff~26");
+System.err.println("Stuff~31: "+this);
 Thread.dumpStack();
     	return -999997;
     }
@@ -134,7 +134,7 @@ Thread.dumpStack();
 class Sval extends Stuff {
     String val;
     Sval(String v) {
-        super(TJ.Type.CHAR, v.length(), false, false);
+        super(TJ.Type.CHAR, v.length(), false, true);
         val=v;
     }
     public String toString() {
@@ -142,6 +142,13 @@ class Sval extends Stuff {
     }
     public String getStr() {
         return val;
+    }
+	public int getInt(int sub) {
+		len = val.length();
+		if(sub==len)return 0;    // simulating a C string
+		else if(0<=sub && sub<len) return val.charAt(sub);
+		else tj.eset(tj.RANGERR);
+		return 0;
     }
     public Stuff klone() {
         return new Sval(val);
@@ -270,17 +277,16 @@ System.exit(99);
     	return -999998;
     }
 }
-/*	Typeless array element. Value is element in parent array. 
+/*	Typeless array element. Value is element in array. Treats Sval as an array. 
  */
 class AEval extends Stuff {
     int val[];   // This array exists in the parent I/Cval
     int subscript;
-// datum
+// datum 
     AEval(Stuff array, int subscript) {
         super(array.type, 1, true, false);    // type,len,lvalue,isArray
     	val = array.getIntArray();
     	this.subscript = subscript;
-//trace(new Throwable(), "======>> AEval(..): ", subscript, 999);
     }
     public int getInt() {			// from parent
         return val[subscript];

@@ -4057,11 +4057,316 @@ works. <<== GOAL     DONE, test 25 prints x[4,5,6] -->  0 7 0 <<== GOOD
 ==>>	New flag: pushpopON covers stk dumps. Currently false, off. TC~60.
 ------------------------------------
 test 29 next: pl"foo is here"    <<=== currently bombs: Runs to end, no output.
-	Probably Cvar array issue.
 ---------------------
 
-Wed Sept 21
-NEED: commit, then 29.
+Fri Sept 23
+TEST 29: bombs on pl which is tc coded using MC 1. Needs while to work. Not sure
+where it bombed. All tracing is on...
+	MC 10,1   --   10 is hex 0a is LF, line feed. 13 is 0d, CR.
+pl char b(0) [
+	int i
+	i=0
+	MC 10,1
+	while(1)[         <<== forever ???  ( temporary, should be b(i) )
+		MC b(i),1
+		i=i+1
+	]
+]
+SYM: : ->MC<-                MC 10,1
+  Stk~125 push: Ival:10
+  Stk~125 push: Ival:1
+  Stk~135 pop: Ival:1
+  Stk~135 pop: Ival:10
+
+  Stk~125 push: Ival:10
+  Stk~135 pop: Ival:10
+        EOS
+  Stk~125 push: Ival:1
+  Stk~135 pop: Ival:1
+SYM: : ->MC<-                MC b(i),1
+SYM: : ->b<-
+  Stk~125 push: Sval:foo is here      << Sval, not Cval array.
+  Stk~135 pop: Sval:foo is here
+Stuff~26
+java.lang.Exception: Stack trace
+----
+Design issue: Should Sval exist? Its a constant, not an array. Must convert to
+array to access elements. Or define substr(f,t). So b(i) won't work unless
+converted.
+C version konst: parses "string", nulls the end, defines f/lname,
+		then:   return CharStar;       <<=== So it is a Type.
+---------------------
+
+Sat Sept 24
+Path forward is to get MprF~65 working to enable modern pxx in pps/library.tc.
+That requires activating varargs logic, but that is not a big deal...
+	tiny-c$ grep varargs *.c -n
+		tc.c:9:int varargs = 0;
+		tc.c:44:char* xvarargs = "...";
+		tc.c:310:	if(varargs>0) nargs=varargs-1;
+		tc.c:335:			varargs=0;
+		341: ABOVE/BELOW
+		tc.c:363:			else if ( _lit(xvarargs) ){
+		tc.c:364:				varargs=nargs+1; 
+		                        break; 
+		                    }
+		tc.c:372:		if(!varargs) {
+    373                         if(arg != nxtstack) {
+    374                                 cursor=localcurs;
+    375                                 stcurs=localstcurs;
+    376                                 eset(ARGSERR);
+    377                         }
+    378                         while(nargs>0){
+    379                                 popst();
+    380                                 --nargs;
+    381                         }
+    382                 }
+---------------------
+
+Wed Sept 28
+STATUS: new C code in MC~28..71. AND test is 29.
+	pushes a linefeed (10) and has blank line after 2 EOS,
+	SYMs MC and b, pushes "foo is here", Stuff~26, 
+	crashes MC~202: 
+		added err print mcno, covered C code, compiles, runs, 
+		crashes mcno 1 was the newline, 101 never reached.  
+Examine pps/library.tc, pl()...
+	pl uses while loop on MC b(i),1   <<--  reached
+	MC 1 known to work. parsing b(i) is the issue.
+NEW GOAL: set aside MC 101 and fix the parsing of b(i)
+Enhancing trace tools...
+	trace impls: Expr~439, MC~244, ST~253, Stuff~335   <<== COPIES
+---------------------
+
+Thur Sept 29
+b is parsed but i is not. pps/lib code...
+		/* put a null terminated string as a new line
+		pl char b(0) [
+				int i
+				i=0
+				MC 10,1
+				while(1)[
+						MC b(i),1
+						i=i+1
+				]
+		//      MC "%c%s", 10, b, 101
+		]
+Stuff.getInt needs an override, the Stack trace comes from the base getInt code
+which should never be entered. foo is an Sval.
+	Did Sval override of getInt(sub). It returns a character upcast to int.
+	BUT the call from MC 1 is getInt(): Stuff~32. Code frag...
+MC~200
+	public static void machinecall( int nargs ) {
+		Stuff[] args = new Stuff[nargs-1];
+		int mcno = stk.toptoi();
+		System.err.println("MC~201, mcno: "+mcno);
+crashes because mcno never parsed or pushed. Need to study factor,resolve,enter.
+MC parsed and enter called immediately. Cursor -->b, which is GOOD. enter should
+parse b(i),1 properly: haveargs is true. But the parsing doesn't happen. enter
+then does toptoi to get the mcno causing Exception & stack trace: Stuff~32. That
+call is from code that should never be reached, the base getInt(). Sval does not
+have an override. b(i) should be 'f', the first char of "foo is here".
+	All seems well when enter is called. enter does the arg parsing, but that
+	doesn't happen.
+New facility: int tj.symCount. Turn on dumps when count reaches an interesting
+level. So far just prints. IDEA: in main set turn-on level instead of current
+code there.   ==>>  PT~90  <<==
+	THOUGHT: Need to get to it to turn it on, and need to turn it on to get to
+it. Maybe new boolean dynON, and all trace calls:  if(dynON)trace(...  And dynOn
+is set in TC~60.
+if(traceONs in EQ01, Expr, ST, Stuff,   TC, Var.  8 total
+              25,30  324   51  302,304  64  75
+Some are keepers. Maybe all. Checking dumpSym calls: ONLY ONE, Expr~324/
+---------------------
+
+Fri Sept 30
+Reading factor. Need to trace its parsing of b(i). 
+	Maybe setarg is the issue. Expr~36.
+MC doesn't use setarg. As soon as MC is parsed, enter(0). Expr~328.
+Then...
+		at tg37.tinyc.Expr.enter(Expr.java:84)
+		Expr~84. error: 0
+		SYM:  7: ->b<-
+		at tg37.tinyc.Expr.factor(Expr.java:343)
+		at tg37.tinyc.Expr.factor(Expr.java:350)
+		  Stk~125 push: Sval:foo is here
+		Expr~455 trace dumpLine......
+				MC b(i),1
+				^
+		after asgn, nargs,stkSize: : 1 1 at tg37.tinyc.Expr.enter(Expr.java:90)
+		  Stk~135 pop: Sval:foo is here
+		Stuff~31: Sval:foo is here
+b is parsed, an Sval, and pushed, Stk~125. Code is in enter, Expr~84.
+enter(int where) CODE frag...
+				if ( haveArgs ) {
+		trace(new Throwable());                        //  <<<=== REACHED
+					do {
+		System.err.println("Expr~84. error: "+tj.error);   << above dump ~4188
+						if(tj.error!=0)return;
+						if( asgn()) ++nargs;      <<<<===  PARSE AND PUSH
+						else break;  // break on error
+		trace(new Throwable(),"after asgn, nargs,stkSize: ",nargs,stk.size()); // REACHED
+					} while( lit(xcomma) );       ^^^=====  above dump ~4196
+				}
+above dumps 4189..4195 are from asgn. 
+machineCall does its own args parse/push ???
+	enter(0) parsing args: asgn loop; b is matched, down to factor Expr~325.
+		SYM ->b<-, Var lookup as v. 
+			v is NOT an array, len is 1, value Sval "foo is here"
+NEED design options. NEED access to individual chars of Sval: f,o,o, ,i,s...
+OTHER ISSUEs: b is not resolved to b(i). AND mcno 1 is never parsed.
+	maybe SVal len 1 supports char plucking by getInt(int sub).
+	or new getChar(int pos) returns a character...
+		stk.push(new Cval(v.getChar(i));   <<-- one liner, nice enough.
+	BUT need to parse '(' and i, and ')' and ',' and 1.
+		WHAT STOPS PARSING NOW ???
+PLAN 0: 1ST answer ^^^, then code Sval.getChar(int), then fix the parsing.
+	ANSWER: b is not an array. resolve is not called. cursor is stuck on '(' and
+	is NOT a comma, so args are done. Instead of parm: char b(0) use Sval b.
+That honors quoted Strings. How about String expressions? Must they be buried in
+an Sval constructor? Can I write "x is "+x where an Sval is expected ??? NO, has
+to be new Sval("x is "+x). 
+---
+PLAN 1:
+	modify MC 1 to use Sval b and (char)b.getInt(int i).
+		MC b,i,1
+x	code: int Sval.getInt(int), 
+	and maybe char Sval.getChar(int) too.
+
+/* put a null terminated string as a new line
+pl char b(0) [
+	int i
+	i=0
+	MC 10,1
+	while(1)[       //  <<==  need b(0) here.
+		MC b,i,1
+		i=i+1
+	]
+//	MC "%c%s", 10, b, 101
+]
+---
+Plan 2: implement b(i) for Sval.
+x	Sval isArray TRUE. Always. AND lvalue, too.
+	Brand new crash, TYPEERR... 
+		IN RESOLVE: 7777 7777 at tg37.tinyc.Expr.resolve(Expr.java:363)
+		SYM:  8: ->i<-
+		Expr~333,Var v: i: INT Ival:0, value: Ival:0
+		at tg37.tinyc.Expr.factor(Expr.java:344)
+		at tg37.tinyc.Expr.factor(Expr.java:351)
+		  Stk~125 push: Ival:0
+		  Stk~135 pop: Ival:0
+		lib 
+		line 66 (cursor prog[1168]): TYPEERR
+				MC b(i),1
+					  ^
+		DONE
+	And the carot moved ! 
+String is not an array, so typeerr is maybe expected ??? 
+	Until new code gets it to mimic an array.
+------  goal: study THIS crash...
+	i is parsed, 8th sym ~4252 above
+	Expr~375...
+			Stuff foo = Stuff.createAEval(array,subscript);
+array is an Sval. createAEval needs code. Stuff~80.
+	int Sval.getInt(int sub)  returns proper char as int.
+	char b(0);   b seems to be an Sval w/ "foo is here" 
+	b(i) should evaluate to to i-th char of an Sval.
+	b.getInt(i) is not tiny-c. b(i) must MIMIC getInt(i).
+	RESOLVE should handle this case ???
+		if foo instanceof Svar then return foo.getInt(i)  ???
+		New code in resolve returns Cval with b(i) as value.
+		Fixed the printf. Needed "%c" format to show the character, MC~76.
+Time to tidy the dumps. 
+		dynON = false, TC~60 worked. Output is now clean.
+	Cannot find source of "MC~76" MC.class is one minute older than MC.java
+		MC is not getting compiled.
+---------------------
+
+Sat Oct 1
+Plans: 
+	touch MC.java and compile.
+	When 29 is clean next goal is full regressions script.
+		All tests assume tc main. Pure shell.
+29 ISSUEs...
+	while(b(i)) fails: cannot access the null.  lib~65.
+	HOW TO get length of a string ?
+strlen, MC104... args[0] is index to first char of string. Is the string in
+an Sval? Or the tc code text w/ " at end? test 29 is the latter. How to do
+104 ???  C code is...
+		char* s=(char*)argsv[0];
+		return strlen(s);
+which assumes null end. konst, tc.c~411 sets the null: ~432.
+	java style konst creates Sval w/ copy of the string ???
+	Returns it. Expr~380..392.
+----
+recalling overall parse of statement...
+	ST~31: decl, keywords, asgn.
+	Expr: asgn...konst~364, Sval pushed.
+		tunnel back up to action call.
+Parse and push an Sval. Is it a cp ??? Null terminated ??? 
+        return new Sval(tj.prog.substring(tj.fname,tj.lname));
+    Sval(String v) {
+        super(TJ.Type.CHAR, v.length(), false, true);
+        val=v;
+    }
+substring may or may not cp. new String always copies. Null termination is a C
+usage convention. Java uses an object with ptr to underlying char or byte array,
+and a length. It therefore has no need for null termination. But it has
+s.length(). tiny-c code uses quotes. The konst " must search for the closing
+quote OR EOL, then return new Sval(from,to). The above~4308 Sval just sets a ptr
+into prog, val=v ~4310. For a cpy: val = new String(v);
+Goal is MC104, strlen.
+C logic: konst changes 2nd quote to null.
+	Uses _findEOS to find the 2nd quote,
+		Side effect is setting f/lname around (in/infix) to string's first/last,
+		returns Type CharStar.
+	MC104 returns strlen(args[0]).
+Java logic: konst returns cp of string as Sval. 
+	To assure that: val = new String(prog.substring(first,last));
+	MC104 returns val.length().
+		BUT the new string becomes instant garbage. Try...
+			return prog.substring(first,last).length();
+		MAYBE a cp is made, maybe not. Depends on java version. Either is OK. 
+---
+STATUS: MC~96, Mstrlen (MC104) coded, 
+	needs findEoStr added to PT.
+---------------------
+
+Sun Oct 2
+Sval thought: 
+x	if sub==len return 0;  
+x	while(b(i)) in pps/lib~66
+	when 29 runs proper and clean do a COMMIT
+Compile/run status...
+x	3 errors, all in MC104  COVERED
+	compiles, RANGERR   while b(i)
+TRACING starting at while, ST~74
+	dynON true, others false   TC~60
+	in ST while turn on others   ~
+NEW FOCUS: dynON usage.
+x	symCount bump NEEDed. Always ON. check PT~94.    <<=====vvvv
+	traceOnLevel init TJ~66   (why there???)
+x	dumpSym() PT~88, remove the bump 
+x		MOVE bump to Expr~312.
+	usage comment at TC~58
+./gj TRACE dumps one line, TC~58, TRACE USAGE.       <<======^^^^
+	guides through usage, a howto.
+	control elements are scattered. NEED: move them all to TC~60 neighborhood.
+---------------------
+
+Tue Oct 4
+Working on tracing controls. They are scattered, see ~4347..51 above.
+	controls work OK, still scattered. 
+	Usage comment is at TC~60. Probably gather there. 
+		TJ~66
+		PT~90
+b(i) isn't returning 0, RANGERR. Not just MC, pn b(i) fails, too.
+	NOT Stuff~148, THERE are 7 eset(RANGERR). No stack dump because no
+	exception. Try Expr~351. BINGO! resolve(). 
+	If Sval && sub==len then honor the implied null. Expr.resolve~360.	FIXED
+x		TIDY
+		COMMIT
+
 
 
 

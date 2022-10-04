@@ -86,7 +86,13 @@ public class PT {
     }
     /* dump the most recently parsed symbol (or constant) */
     public static void dumpSym(String msg){
-    	System.err.print(msg + ": ->"+tj.prog.substring(tj.fname,tj.lname)+"<-\n");
+    	if(tj.symCount >= tj.traceOnLevel){
+			TJ.traceON = true;
+			TJ.symON = true;
+//			TJ.pushpopON = true;
+    	}
+    	if(TJ.symON)System.err.print(msg + " " + tj.symCount 
+    		+ ": ->"+tj.prog.substring(tj.fname,tj.lname)+"<-\n");
     }
 /* dump current line with ^ under cursor
     void dumpLine(String msg){

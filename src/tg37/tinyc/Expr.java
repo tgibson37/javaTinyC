@@ -48,17 +48,21 @@ public class Expr extends PT {
 //            	valPassed.ui = get_char(where);
             }
         }
-//System.out.println("Expr~54"+valPassed);    // IS:   Sval:foo is here   GOOD
-//trace(new Throwable(),"Before varAlloc",0,0);
         stmt.varAlloc( type, valPassed);
-//trace(new Throwable(),"After varAlloc",0,0);
     }
 
+/*      SITUATION: Just parsed symbol with class 'E', or special symbol MC.
+ *      Parses the args putting values are on the stack, arg pointing to the
+ *      first of them.
+ *      Sets the cursor to the called function's 'where'. Parses arg decl's
+ *      giving them values from the stack. Executes the function body.
+ *      Pops the locals (vars and values). Restores the caller's stcurs and 
+ *      cursor.
+ */
     public void enter(int where) {   // c code tc~307
 		int arg = stk.size();    // index to first parsed arg, if any
         int nargs=0;
         int varargs=0;
-//trace(new Throwable(),"enter; arg,stk.size():",arg,stk.size());
         lit(xlpar); 		// optional (
         char x = tj.prog.charAt(tj.cursor);
         boolean haveArgs =  ! ( lit(xrpar)
@@ -74,14 +78,12 @@ public class Expr extends PT {
                 if(tj.error!=0)return;
                 if( asgn()) ++nargs;
                 else break;  // break on error
-//trace(new Throwable(),"after asgn, nargs,stkSize: ",nargs,stk.size());
 			} while( lit(xcomma) );
         }
         if(tj.error!=0)return;
         lit(xrpar);   // optional )
         rem();
         if(where==0) {
-//trace(new Throwable(),"MC: ",arg,stk.size());
             if(stk.size()>0) {
                 MC.machinecall( nargs );
 //              varargs=0;
@@ -91,7 +93,6 @@ public class Expr extends PT {
         }
 // ABOVE  ^^^^   parse the args, set cursor
 // BELOW  vvvv   parse the parameters, declare/set their values, st() the body
-//trace(new Throwable(),"BELOW",arg,stk.size());
 		int localstcurs=tj.stcurs, localcurs=tj.cursor;
         tj.cursor = where;
         vt.newfun();
@@ -102,7 +103,6 @@ public class Expr extends PT {
 				  do {
 					  setArg(TJ.Type.INT, arg);
 					  arg++;
-//trace(new Throwable(),"int",arg,stk.size());
 				  } while(lit(xcomma));
 				  lit(xsemi);    // optional
 			}
@@ -126,7 +126,6 @@ public class Expr extends PT {
 // assure number of args == number of parms, clean up...
 	   if(varargs==0) {
 		   if(arg != stk.size()) {    // <<<===  ISSUE
-trace(new Throwable(),"ISSUE",arg,stk.size());
 				tj.cursor=localcurs;
 				tj.stcurs=localstcurs;
 				tj.eset(tj.ARGSERR);
@@ -310,7 +309,8 @@ trace(new Throwable(),"ISSUE",arg,stk.size());
         	stk.pushStuff(kon);
         }
         else if( symName() ) {
-        	if(TJ.traceON||TJ.symON)PT.dumpSym("SYM: ");
+        	++TJ.symCount;
+        	if(TJ.dynON||TJ.symON)PT.dumpSym("SYM: ");
             tj.cursor = tj.lname;
             if( symNameIs("MC") ) {
                 enter(0);
@@ -327,14 +327,10 @@ trace(new Throwable(),"ISSUE",arg,stk.size());
                    enter(where);
                 }
                 else {   /* is var name */
-//trace(new Throwable());
                     if( v.value.isArray ) {
-//trace(new Throwable());
-//v.value.dumpArray();
                     	Stuff element = resolve(v.value);
 						stk.pushStuff( element );
                     } else {
-//trace(new Throwable());
 						stk.pushStuff( v.value );
                     }
                 }
@@ -346,19 +342,23 @@ trace(new Throwable(),"ISSUE",arg,stk.size());
     }
 /* if '(' return the subscripted element, else the array itself as lvalue. */ 
     Stuff resolve(Stuff array) {
-//trace(new Throwable());
 		if( lit(xlpar) ) {
+			int len = array.len;
 			asgn(); 
 			if( tj.error!=0 )return null;
 			lit(xrpar);
 			int subscript = stk.toptoi();
-//trace(new Throwable(),"==>> subscript,len: ", subscript, array.len);
-			if(array.len>=0)if( subscript<0 || subscript>=array.len ){
+			if(array instanceof Sval) ++len;  // include trailing null, test 29.
+			if(len>=0)if( subscript<0 || subscript>=len ){
 				tj.eset(tj.RANGERR);
 				return null;
 			}
+			if(array instanceof Sval){
+				char c = (char)array.getInt(subscript);
+				Stuff foo = Stuff.createCval(c);
+				return foo;
+			}
 			Stuff foo = Stuff.createAEval(array,subscript);
-//System.err.println("Expr~362, foo: "+foo);
 			return foo;
 		}    	
 		return array;

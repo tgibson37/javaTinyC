@@ -24,8 +24,6 @@ public class MC {
 /*	used by printf,ps,pl. Prints one token of format string;
  *	either a %<char> or a block of chars excluding %. Recursive
  *	until whole fmt string consumed.
- */
-/*
 void pFmt(char *fmt, int *args) {
 	char pct[9], *nxtpct;
 	int datum, fmtchar;
@@ -59,19 +57,19 @@ void pFmt(char *fmt, int *args) {
 	pFmt(fmt, args); /* do the rest 
 	return;
 }
+ */
 
 
-/* new MC's with this implementation. A bit of modernization. 
-int MprF(int nargs, int *args)
-{
-}
+/* new MC's with this implementation. A bit of modernization. */
+int MprF(int args[]){
 /*
 printf("\n\n63: MprF: nargs %d args[0..3] %d %d %d %d",
 			nargs,args[0],args[1],args[2],args[3]);
-	pFmt((char*)*args,(args+1));  /* fmt, args 
+*/
+//	pFmt((char*)*args,(args+1));  /* fmt, args */
 	return 0;
 }
-*/
+
 
 //MC 1
 	int Mpc(int args[]){
@@ -95,6 +93,15 @@ printf("\n\n63: MprF: nargs %d args[0..3] %d %d %d %d",
 		System.out.print(" "+args[0]);
 		return 0;
 	}
+//MC104
+/*
+	int Mstrlen(int args[]) {
+		if(nargs<1){ eset(tj.ARGSERR); return -1; }
+		int first = args[0];
+		int last = findEoStr(first);
+		return tj.prog.substring(first,last).length();
+	}
+*/
 //MC 108
 	int Mexit(int args[]){ 
 		tj.eset(tj.EXIT);
@@ -143,7 +150,6 @@ printf("\n\n63: MprF: nargs %d args[0..3] %d %d %d %d",
 
 	static void origMC(int mcno, Stuff[] args) {
 		if(mcno<1 || mcno>origNames.length) {
-trace(new Throwable(),"origMC: ",mcno,origNames.length);
 			stk.pushk(0);
 			tj.eset(tj.ARGSERR);
 		}

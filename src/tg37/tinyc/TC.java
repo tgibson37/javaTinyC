@@ -55,17 +55,22 @@ public class TC {
 			Stack.getInstance();
 			tj.cursor = 0;   // seed
 			vt.tclink();
-//		TJ.traceON = true;     // true turns on tracing framwork.
+/*	TRACE USAGE: TJ.symCount bumped unconditionally at Expr~313. LEAVE IT.
+ *	Turn on symOn ~65 below, SYM msgs w/ count appear.
+ *	Lower TraceOnLevel to turn on tracing dynamically, 
+ *	See PT89 for what else is turned on. Adjust if needed.
+ *		RECOMPILE needed after changing settings.    <<======
+ */
+//    	TJ.traceOnLevel = 80; // UNCOVER THIS and set level to turn on.
 		TJ.traceON = false;
-//		TJ.symON = true;
 		TJ.symON = false;
-//		TJ.pushpopON = true;
 		TJ.pushpopON = false;
-			if(TJ.traceON)System.err.println("traceON is true, TC~58");
+		TJ.dynON = true;     // check PT~90 code dynamic on details.
+			if(TJ.traceON)System.err.println("traceON is true, TC~68");
             stmt.st();
         } catch(Exception e) {
-e.printStackTrace();
-System.err.println("TC~60, Exception: "+e);
+        	e.printStackTrace();
+        	System.err.println("TC~72, Exception: "+e);
         }
     }
     public static void main(String[] args) {
@@ -73,6 +78,6 @@ System.err.println("TC~60, Exception: "+e);
         System.out.println("running TC.main");
         tc = new TC();
        	tc.initAndGo(args);
-System.out.println("\nTC~69, natural exit");
+System.out.println("\nTC~81, natural exit");
     }
 }

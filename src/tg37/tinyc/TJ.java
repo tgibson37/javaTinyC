@@ -52,16 +52,19 @@ public class TJ {
      */
     static int error;    // from list below. ZERO is good.
     static int errat;	 // where error occurred
+    static int symCount = 0;
     static boolean quiet;
     static int cursor;   // index into pr
     static int stcurs;	 // current statement
     static int fname,lname;  // most recently matched symbol
     static boolean leave;	// set true by return statement
     static boolean brake;	// set true by break statement
-    static boolean traceON; // default false, set in TC~65.
-    static boolean symON;   // default false, set in TC~65.
-    static boolean pushpopON;   // default false, set in TC~65.
 // leave and brake are restored to false when their respective action is complete.
+    static boolean traceON; // default false, set in TC~65.
+    static boolean symON;   // default false, set in TC~65 or PT~90
+    static boolean pushpopON;   // default false, set in TC~65.
+    static int traceOnLevel = 99999; // LOWER THIS at TC~60 to turn on.
+    static boolean dynON;		// turn on at TC~60
 
     /* type flags */
     static int CHAR = 0;
