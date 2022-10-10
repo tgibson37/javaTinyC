@@ -1,0 +1,187 @@
+#!/bin/bash
+
+#cmd="java tg37.tinyc.TC"
+cmd="./testrun"
+
+showtds() {
+	cat $TDS_FILE
+	exit 1
+}
+
+usage() {
+  cat << EOF >&2
+Usage: ./test [-kdltCI?] [testname testname ...]
+       ./test [-s] suitename
+       ./test
+  no options: run the default suite
+  -k (keep): copy latest results to expected
+  -d (diff): show differences between latest results and expected
+  -l (list): list -lt files
+  -t (tree): tree files
+  -C (clean): remove latest results
+  -I (instructions): how to set up test suites
+  -s (suite): set suitename as default, then run
+  -S (show): show default suite
+EOF
+  exit 1
+}
+
+# set the default suite (-S)
+set_suite() {
+echo $1 > "$TDS_FILE"
+#exit 0
+return
+}
+
+get_suite() {
+if test -e $TDS_FILE; then
+	TS=`cat $TDS_FILE`
+	echo "running test suite $TS"
+else 
+	echo "Use -s to set suite directory"
+	exit 1
+fi
+}
+
+instructions() {
+  cat << EOF >&2
+Setup:  To create a test suite...
+	put this bash script (test) in your development directory
+	edit line 3 to your system under test.
+	create a directory, its name is the suite name (<suite> below)
+	create a subdirectory (folder) in <suite> with the test name <tn>
+	in that folder:
+		create a file of inputs, one line per input, named 'i'
+		create a file with tiny-c or tiny-obj code for the test 't'
+			[I use a soft link to the code stored elsewhere.]
+	from the development directory (two levels above the test files)...
+	run ./test -l, also try ./test -t
+		you will get a listing or tree of your test suites and their 
+		test files
+	run ./test -s <suite> to run an entire suite. -s also sets that
+		suite as default. Run ./test without options or args to run
+		the suite again. 
+	The first run of a new test will have a large diff. The r file is 
+		diffed against an empty or nonexistent er (expected results)
+		file. Review that diff and if it is a good run use 
+		./test -k <tn> to copy r to er. Another run should show no 
+		difference.
+	to do one test use ./test <tn>, no options. The test name <tn> must 
+		be in the default suite. That produces the results files, r and d
+		r has results (printf(...)), d has dumps (fprintf(stderr,...))
+	Examine those two files. 
+		If they look good run ./test -k <tn>, (k for keep).
+		Keep copies r and d to er and ed respectively, as expected results.
+	(Notice you can set up tests that are expected to fail, hence capturing 
+		dumps.)
+EOF
+  exit 1
+}
+
+# does one test
+dotest() {
+#echo ~83 do test: $TS/$1
+	$cmd $TS/$1/t <$TS/$1/i >$TS/$1/r 2>$TS/$1/d
+	echo TEST: $1 done
+}
+#does one keep
+dokeep() {
+	cp $TS/$1/r $TS/$1/er
+	cp $TS/$1/d $TS/$1/ed
+	echo KEEP: $1 done
+}
+#does one diff
+dodiff() {
+	FILE=./$TS/$1/r
+	echo ----this run \< ----expected \> ---- diff $1 
+	if [ -f $FILE ]; then
+		FILE=./$TS/$1/er
+		if [ -f $FILE ]; then
+			diff $TS/$1/r $TS/$1/er
+			diff $TS/$1/d $TS/$1/ed
+		else
+		   echo "File $FILE does not exist."
+		fi
+	else
+		echo "File $FILE does not exist."
+	fi
+		
+}
+# removes d,r from one test
+doclean() {
+	rm -f $TS/$1/r
+	rm -f $TS/$1/d
+}
+# list files of one test
+dolist() {
+	ls -lt $TS/$1
+}
+# tree files of one test
+dotree() {
+	tree $TS/$1 --noreport
+}
+
+# does one argument: just diff, just keep, or test and diff
+doit() {
+#echo ~125testing: $kt $1
+	if [ $clean = "YES" ]; then
+		doclean $1
+	elif [ $kt = "KEEP" ]; then
+		dokeep $1
+	elif [ $diff = "YES" ]; then
+		dodiff $1
+	elif [ $clean = "YES" ]; then
+		doclean $1
+	elif [ $list = "YES" ]; then
+		dolist $1
+	elif [ $tree = "YES" ]; then
+		dotree $1
+	else
+		dotest $1
+		dodiff $1
+	fi
+}
+
+#do specific tests
+dospecific() {
+#echo ~146 do specific in $@: TS $TS "<<<<===="
+	for tname in $@
+	do
+		doit $tname
+	done
+}
+doall(){
+#echo test~153 do all:
+	for tname in $( ls ./$TS ); do
+		doit $tname
+	done
+}
+
+#### MAIN ####
+kt=test
+diff=NO
+clean=NO
+list=NO
+tree=NO
+TDS_FILE="testDefaultSuite"
+while getopts kdltISs:C? o; do
+  case $o in
+    k) kt=KEEP;;
+    d) diff=YES;;
+	l) list=YES;;
+	t) tree=YES;;
+	I) instructions;;
+	s) set_suite $2;;
+	S) showtds;;
+	C) clean=YES;;
+    ?) usage;;
+  esac
+done
+get_suite
+shift "$((OPTIND - 1))"
+
+if [ $# -gt 0 ]; then
+    dospecific $@
+else
+	doall
+fi

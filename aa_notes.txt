@@ -4365,7 +4365,200 @@ b(i) isn't returning 0, RANGERR. Not just MC, pn b(i) fails, too.
 	exception. Try Expr~351. BINGO! resolve(). 
 	If Sval && sub==len then honor the implied null. Expr.resolve~360.	FIXED
 x		TIDY
-		COMMIT
+x		COMMIT
+		PUSH
+push details: JavaTinyC, 
+---------------------
+
+Wed Oct 5
+Goal: testall shell script. RECALL the design for tiny-obj...
+	A test suite is a dir with test subdirs.
+	A test subdir has content...
+-rw-r--r-- 1 tom tom    0 May 11  2021 d
+-rw-r--r-- 1 tom tom    0 May  2  2021 ed
+-rw-r--r-- 1 tom tom 3328 May  2  2021 er
+-rw-r--r-- 1 tom tom   25 May  2  2021 i
+-rw-rw-r-- 1 tom tom 3328 Jun 14  2021 r
+lrwxrwxrwx 1 tom tom   26 May  3  2021 t -> ../../SamplePrograms/pf.tc
+---------------------
+
+Fri Oct 7
+Goal: push
+	https://github.com/tgibson37/javaTinyC
+FAILED...
+tom@sunroom-7el:~/Projects/Java/tiny-c$ git  remote add javaTinyC github.com/tgibson37.git
+tom@sunroom-7el:~/Projects/Java/tiny-c$ git push
+fatal: No configured push destination.
+Either specify the URL from the command-line or configure a remote repository using
+
+    git remote add <name> <url>
+
+and then push using the remote name
+
+    git push <name>
+
+tom@sunroom-7el:~/Projects/Java/tiny-c$ git remote
+javaTinyC
+tom@sunroom-7el:~/Projects/Java/tiny-c$ git  remote add javaTinyC https://github.com/tgibson37/javaTinyC
+fatal: remote javaTinyC already exists.
+tom@sunroom-7el:~/Projects/Java/tiny-c$ git push javaTinyC
+fatal: The current branch master has no upstream branch.
+To push the current branch and set the remote as upstream, use
+
+    git push --set-upstream javaTinyC master
+
+tom@sunroom-7el:~/Projects/Java/tiny-c$ git push --set-upstream javaTinyC master
+fatal: 'github.com/tgibson37.git' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+tom@sunroom-7el:~/Projects/Java/tiny-c$ 
+---------------------
+
+Fri Oct 7
+Where was the dot-git added to tgibson37? I think I added it following an
+example on some web site, probably step 3.3 in ...
+	https://gist.github.com/mindplace/b4b094157d7a3be6afd2c96370d39fad
+I need the "copied web address" from step 3.1. 
+---
+git and github...
+	git show: show various types of objects...  (blobs,trees,tags,commits)
+		git help show: details             ---------^^^     FATAL, all
+===========
+Try this:
+	remove/delete javaTinyC from github online, not cmd line.
+	Then start over using git cmd for everything.
+https://docs.github.com/en/get-started/getting-started-with-git/managing-remote-repositories
+https://www.google.com/search?q=delete+github+repository+online&client=firefox-b-1-lm&sxsrf=ALiCzsZaSL_6wNWkhu7-vGAXtrmfTyNTNA%3A1665223359955&ei=v0pBY4voOaLIptQPpMyECA&oq=github+delete+repository+online&gs_lcp=Cgdnd3Mtd2l6EAMYADIGCAAQHhAWMgYIABAeEBYyBggAEB4QFjIFCAAQhgMyBQgAEIYDMgUIABCGAzIFCAAQhgM6CggAEEcQ1gQQsAM6BwgAELADEEM6BwgjELACECc6BggAEB4QBzoHCAAQgAQQDToICAAQHhAIEAc6BggAEB4QDToICAAQHhAIEA06BQgAEIAEOgQIABAeOgYIABAeEAg6CAgAEIAEELEDOgoIABCABBCHAhAUOgkIABAeEMkDEBZKBAhBGABKBAhGGABQrBFY5oUBYO-bAWgBcAF4AIABnAGIAfwHkgEEMTEuMZgBAKABAcgBCcABAQ&sclient=gws-wiz    On GitHub.com, navigate to the main page of the repository.
+    1 Under your repository name, click Settings.
+    2 Under Danger Zone, click Delete this repository.  [SCROLL WAY DOWN]
+    3 Read the warnings.
+    4 To verify that you're deleting the correct repository, type the name of the
+	    repository you want to delete.
+DELETED
+x	BUT 'git remote' shows javaTinyC. I need to delete that, too.   DONE
+---     we are 'clean' 
+New goal: 
+	entirely with git commands set up the remote
+	push
+from git TRY...
+	$ git remote add origin https://github.com/tgibson37/javaTinyC
+	$ git remote -v
+should get...
+	> origin  https://github.com/tgibson37/javaTinyC (fetch)
+	> origin  https://github.com/tgibson37/javaTinyC (push)
+NOTE: no password. So this was strictly local. github not involved (yet).
+	$ git push
+should get...
+	request for login and token (password)     	got FATAL, USE ...
+	    git push --set-upstream origin master	Repo not found
+	    	BUT the login/password worked.
+So now I will go online via browser to github and add javaTinyC
+x	Done. 
+	github recommends...
+		git remote add origin https://github.com/tgibson37/javaTinyC.git
+		git branch -M main
+		git push -u origin main     <<<===  WORKed, Oct 8, 2022
+my current branch is master. Evidently pushing master is BAD, hence main.
+AND my repo is JUST javaTinyC, no dot-git. This recomendation added the got-git.
+	Will try as recommended, then without the .git. But my guess remote add will
+	complain, origin is already in use, ~4446 above.
+		true, "...already exists."
+	Without dot-git, branch main then push
+The -M must have renamed master as main, instead of a new branch.   <<-- YES
+	master is gone
+The push worked. Used browser to access and the files are there.
+===
+GOAL: clone tiny-obj's test architecture here. Scripts...
+x		/home/tom/Projects/tiny-obj/testall 
+x		/home/tom/Projects/tiny-obj/test
+x		study these
+x		mkdir testjtc with...
+x			20 with...
+x				t,i
+x					ln -s ../../Tests/20.tc t
+x					touch i is sufficient if no input
+x		1st run, testall
+		finish the suite, 21,23,24,25,29
+		final run
+------
+Behavior:
+$ tree testjtc
+$ ls -ltR testjtc
+testjtc:
+total 4
+drwxrwxr-x 2 tom tom 4096 Oct  9 11:00 20
+testjtc/20:
+total 4
+-rw-rw-r-- 1 tom tom 45 Oct  9 11:03 r
+-rw-rw-r-- 1 tom tom  0 Oct  9 11:03 d
+-rw-rw-r-- 1 tom tom  0 Oct  9 10:58 i
+lrwxrwxrwx 1 tom tom 17 Oct  9 10:58 t -> ../../Tests/20.tc
+
+testjtc
+└── 20
+    ├── d
+    ├── i
+    ├── r
+    └── t -> ../../Tests/20.tc
+    cat testjtc/20/r ... 
+		running TC.main
+		hello tc
+		TC~81, natural exit
+	But no diffs, no timestamp.
+-------
+test ISSUE: testjtc/20 thinks it has run and gives 2 diffs. The r diff is from
+a previous good run half an hour ago. The d diff is ed empty vs d IOException.
+Trying to open a directory. 
+	It should open and read testjtc/20/t -> Tests/20.tc
+	test now uses testrun script so I can gather both date and test results into
+	one redirection. I need to find how bash test assembles an argument to
+	testrun.
+Getting:  java.io.IOException: Is a directory
+	echos in test at 
+		~146 do specific in 20: TS testjtc <<<<====
+		~125testing: test 20
+		~83 do test: testjtc/20
+test -C (clean) removes d and r leaving ed and er. THEN -d (diff) shows nothing
+	because no d/r files. MAYBE 
+GOOD shows after/before date/time marks.
+x	covering debug echos for clean output
+x	1st run, testall
+---------------------
+
+Mon Oct 10
+x	finish the suite, 21,23,24,25,29
+		$ tree testjtc
+		testjtc
+		├── 20
+		│   ├── d
+		│   ├── ed
+		│   ├── er
+		│   ├── i
+		│   ├── r                          expected:
+		│   └── t -> ../../Tests/20.tc         hello tc   OK
+		├── 21
+		│   ├── i
+		│   └── t -> ../../Tests/21.tc         null       OK
+		├── 23
+		│   ├── i
+		│   └── t -> ../../Tests/23.tc         7 11       OK
+		├── 24
+		│   ├── i
+		│   └── t -> ../../Tests/24.tc         0 7 0      OK
+		├── 25
+		│   ├── i
+		│   └── t -> ../../Tests/25.tc         0 7 0      OK
+		└── 29
+			├── i
+			└── t -> ../../Tests/29.tc         foo is here  OK
+		6 directories, 16 files
+x	final run                        all OK
+	COMMIT:     test testrun Tests/ testjtc/
+
+
+
 
 
 

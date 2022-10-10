@@ -1,0 +1,3 @@
+#testRun  run one test with date prefix
+date
+java tg37.tinyc.TC $1

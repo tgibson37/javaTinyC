@@ -30,6 +30,7 @@ public class TC {
             System.exit(1);
         }
         Path appPath = Paths.get(args[0]);
+System.err.println("TC~33 appPath: "+appPath);
         b = Files.readAllBytes(appPath);
         String app = new String(b);
 

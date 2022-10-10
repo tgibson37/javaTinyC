@@ -1,11 +1,2 @@
-# testall
-echo =========== Stuff ===========
-grep main src/tg37/tinyc/Stuff.java -n
-echo ----------- Stuff -----------
-java tg37/tinyc/Stuff
-
-echo =========== Stack ===========
-grep main src/tg37/tinyc/Stack.java -n
-echo ----------- Stack -----------
-java tg37/tinyc/Stack
-
+#! /bin/sh
+bash ./test -s testjtc
