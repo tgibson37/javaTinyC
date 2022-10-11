@@ -1,0 +1,36 @@
+testUsage.txt
+	Run...
+		./test -?     shows all dash options
+	Script test takes a suite name as its sole argument, OR no args.
+		No args runs the same as the previous run with args.
+			File defaultTestSuite that previous.
+	Structure of a suite...
+		The directory name is the suite name
+		Five subdirs: t, i, er, ed, r, d
+			But initially only t and i are required
+			t is the test code. It can be the tiny-c code itself or a pointer
+				to tiny-c code. (I put the code elsewhere: directory Testjtc.)
+			i is stdin inputs, one line per prompt. If no input i must exist but
+				is null. In that case 'touch i' will create it.
+			r and d will be created by the first run with stdout and stderr
+				outputs respectively.
+		Recommended: when creating a new test do 'touch er ed' which will create
+		empty er and ed files. That turns on diffing e vs er and d vs ed. Those
+		diffs will print the respective results for your review. If the results
+		are good, run 'test -k' (for keep) which copies e into er, and d into
+		ed. From then on the diffs will only show different time stamps and that
+		output proves the test ran and is still good.
+	Example setup...
+		$ ls Testjtc
+		20  21  23  24  25  29
+		$ ls Testjtc/20
+		d  ed  er  i  r  t-> ../../Tests/20.tc
+		$ cat Tests/20.tc
+		/* test 20
+		main [
+		MC('h',1);MC('e',1)
+		MC('l',1);MC('l',1);
+		MC('o',1);MC(' ',1);MC('t',1);MC('c',1);
+		]
+	Script testall will test all suites, but this project so far has only one:
+	Testjtc. Just add new lines as needed.

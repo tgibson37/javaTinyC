@@ -1,0 +1,17 @@
+Tools of this project
+---
+jc – java compile, no args
+
+test system
+testrun – runs date and one test. Called by test but can be used standalone. Its role in the test system is to time stamp the results in the two output streams: System.out and System.err.
+testrun – runs unit tests from early development. Coded as mains of several classes.
+test [num] – runs all or one specific test in the test system. Scans testjtc for defined tests, calls testrun on each redirecting outputs into testjtc/r and testjtc/d. Outputs two diffs: r vs er and d vs ed. 
+Tests – directory of tests. Each is a [number].tc, e.g. 20.tc testjtc/t points to test code here.
+testjtc – directory of test expected and results and error prints.
+	/t	pointer to test code in Tests directory
+	/er	expected results
+	/ed	expected errors
+	/r	actual results from most recent run
+	/d	actual errors from most recent run
+
+

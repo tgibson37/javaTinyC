@@ -1,0 +1,20 @@
+MprF/pFmt notes...
+
+MprF pops the format string and passes that and remaining args to pFmt. That fcn
+recursively eats as many % are in the format. Note MC infra has popped all args
+into int args[]. The C version fmt is a char* pointing to tc text. That will be
+pushed as a Sval, OR MAYBE as a Cval array. So ptr into tc text won't work, and
+isn't needed.
+So pFmt still needs fmt and args separated. MprF over pFmt design holds just for
+that purpose.
+pFmt gets a copy of the string as Cval array.
+Walkthrough C's copied to MC~28, not yet java-ized...
+    ~31 Test fmt is null ==>> recursion done, return
+    ~34 datum is next arg.
+    ~36 if fmt[0] == '%'  ==>> collect digits and fmt char
+            into char pct[9]
+    ~48     printf(pct,datum)
+    ~50 else if another %  ==>> printf block of text before it
+            leaving % as 1st char
+    ~55 else print whatever is left in fmt, and return
+

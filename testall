@@ -1,2 +1,2 @@
 #! /bin/sh
-bash ./test -s testjtc
+bash ./test -s Testjtc

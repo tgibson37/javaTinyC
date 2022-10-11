@@ -4555,7 +4555,42 @@ x	finish the suite, 21,23,24,25,29
 			└── t -> ../../Tests/29.tc         foo is here  OK
 		6 directories, 16 files
 x	final run                        all OK
-	COMMIT:     test testrun Tests/ testjtc/
+COMMIT:     test testrun Tests/ testjtc/
+	git ls-tree -r --name-only master >commited.txt
+==============
+committed.txt shows ISSUES...
+x	download into clean dir and run tests there.
+		mv downloaded to ~/Projects/TryIt;   cd there and ...
+		mkdir cls; ./jc; ./r 20     <<==   works !	
+	dot-bak dirs are in the commit, PLUS a few files, noted above.
+----
+In ~/Projects/TryIt did git init. From online found this... 
+git clone https://github.com/user/repository --depth 1 --branch=master ~/dir-name
+git clone https://github.com/user/javaTinyC --depth 1 --branch=master ~/dir-name
+-----------
+STATUS: ABOVE proves download is ample. Nothing missing. 
+---------------------
+
+Tue Oct 11
+Tidy stuff, deleting junk
+---
+debug script works now. Usage...
+	debug <number>     loads that test code: Tests/<number>.tc
+	stop in <class>.<method>
+	stop at <class>:<linenumber>
+	run                runs the code
+	clear              removes break points
+	clear <class>:<linenumber>
+	exit
+more:
+	help, step, step up, cont, print, dump, locals, methods, fields, 
+	watch, unwatch
+VERY WORDY, must type full command words. Help isn't alphbetical. 
+==============
+GOAL: add the 30's to test.
+
+
+
 
 
 
