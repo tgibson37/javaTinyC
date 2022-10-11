@@ -1,6 +1,11 @@
 test status
 latest on top
 ---
+Oct 11, 2022
+Copied my much better test platform from tiny-obj where I developed it a few
+years ago into this project. One test suite: Testjtc plus a nice testUsage.txt
+document. 
+---
 Oct 4, 2022
 test 29 OK
 ---
